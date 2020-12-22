@@ -693,6 +693,7 @@ document.getElementById('btn-empty').addEventListener('click', function (event) 
 document.getElementById('btn-build').addEventListener('click', function (event) {
 	addShape();
 	drawCanvas(0);
+	findTopShapes();
 });
 
 context.canvas.addEventListener('click', function (event) {
