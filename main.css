@@ -1,0 +1,22 @@
+* {
+	box-sizing: border-box;
+}
+
+body {
+	font-family: sans-serif;
+	min-height: 100vh;
+}
+
+.table {
+	display: table;
+}
+
+.row {
+	display: table-row;
+}
+
+.row>* {
+	display: table-cell;
+	padding: 0.5em;
+	vertical-align: top;
+}

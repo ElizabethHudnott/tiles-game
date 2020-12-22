@@ -1,0 +1,599 @@
+'use strict';
+const context = document.getElementById('canvas').getContext('2d');
+
+const CellType = Object.freeze({
+	EMPTY: 0,
+	BLANK: 1,
+	COLOR: 2,
+});
+
+const COLORS = [
+	'#666666',					// Gray
+	'hsl( 15, 100%, 60%)',		// Red
+	'hsl(105, 100%, 46%)',		// Green
+	'hsl(225, 100%, 62%)',		// Blue
+	'hsl( 45, 100%, 60%)',		// Yellow
+	'hsl(195, 100%, 60%)',		// Cyan
+	'hsl(315, 100%, 72%)',		// Pink
+	'hsl(280, 100%, 55%)',		// Purple
+	// Shadowed versions
+	'#444444',					// Gray
+	'hsl( 15, 100%, 40%)',		// Red
+	'hsl(105, 100%, 28%)',		// Green
+	'hsl(225, 100%, 40%)',		// Blue
+	'hsl( 45, 100%, 30%)',		// Yellow
+	'hsl(195, 100%, 40%)',		// Cyan
+	'hsl(315, 100%, 45%)',		// Pink
+	'hsl(280, 100%, 37%)',		// Purple
+];
+
+const MAX_VISIBLE_DEPTH = 4;
+
+let parentElement = document.body;
+
+let gridWidth, gridHeight, gridDepth, numColors, grid;
+let minShapeSize, maxShapeSize, modalShapeSize, shapeSizeRange;
+let minRunLength = parseInt(document.getElementById('run-length').value) || 2;
+let dropProbability;
+let cellSize, boxSize, cornerSize, pxOffset;
+let cellCapacity, totalCapacity;
+let random;
+let topShapes;
+let animLengthDown, animStartHeight;
+
+const scrollbarSize = function () {
+	// Creating invisible container
+	const outer = document.createElement('div');
+	outer.style.visibility = 'hidden';
+	outer.style.overflow = 'scroll'; // forcing scrollbar to appear
+	outer.style.msOverflowStyle = 'scrollbar'; // needed for WinJS apps
+	document.body.appendChild(outer);
+
+	// Creating inner element and placing it in the container
+	const inner = document.createElement('div');
+	outer.appendChild(inner);
+
+	// Calculating difference between container's full width and the child width
+	const scrollbarWidth = (outer.offsetWidth - inner.offsetWidth);
+
+	// Removing temporary elements from the DOM
+	outer.parentNode.removeChild(outer);
+
+	return scrollbarWidth;
+}();
+
+function emptyGrid() {
+	grid = new Array(gridWidth);
+	cellCapacity = new Array(gridWidth);
+	for (let i = 0; i < gridWidth; i++) {
+		let row = new Array(gridHeight);
+		grid[i] = row;
+		cellCapacity[i] = new Array(gridHeight);
+		cellCapacity[i].fill(gridDepth);
+		for (let j = 0; j < gridHeight; j++) {
+			const cell = new Array(gridDepth);
+			row[j] = cell;
+			cell.fill(CellType.EMPTY);
+		}
+	}
+	totalCapacity = gridWidth * gridHeight * gridDepth;
+
+	animLengthDown = new Array(gridWidth);
+	animStartHeight = new Array(gridWidth);
+	animStartHeight.fill(gridHeight);
+}
+
+/** Gets the number of tiles on a cell during play.
+*/
+function getDepth(content) {
+	let depth = gridDepth;
+	while (depth > 0 && content[depth - 1] === CellType.EMPTY) {
+		depth--;
+	}
+	return depth;
+}
+
+function getTopColor(x, y) {
+	const content = grid[x][y];
+	let depth = gridDepth - 1;
+	do {
+		let color = content[depth];
+		if (color !== CellType.EMPTY) {
+			return color;
+		}
+		depth--;
+	} while (depth >= 0);
+	return CellType.EMPTY;
+}
+
+/** Gets the number of tiles on a cell during level construction. */
+function getBuiltDepth(x, y) {
+	return gridDepth - cellCapacity[x][y];
+}
+
+/** The depth parameter is backwards in this function. Higher numbers are underneath.
+ */
+function getColor(i, depth) {
+	if (depth > 1) {
+		const gray = 152 - (depth - 1) * 32;
+		return `rgb(${gray}, ${gray}, ${gray})`;
+	} else if (depth === 0) {
+		return COLORS[i - 1];
+	} else {
+		return COLORS[i + 7];
+	}
+}
+
+function chooseCell() {
+	let x = Math.trunc(random.next() * gridWidth);
+	let y = Math.trunc(random.next() * gridHeight);
+	let capacity = cellCapacity[x][y];
+	while (capacity === 0) {
+		x++;
+		if (x === gridWidth) {
+			x = 0;
+			y++;
+			if (y === gridHeight) {
+				y = 0;
+			}
+		}
+		capacity = cellCapacity[x][y];
+	}
+	while (y > 0 && cellCapacity[x][y - 1] === gridDepth) {
+		y--;
+	}
+	return [x, y];
+}
+
+function chooseShapeSize() {
+	if (shapeSizeRange === 0) {
+		return minShapeSize;
+	}
+	const p = random.next();
+	const modeMinusMin = modalShapeSize - minShapeSize;
+	if (p < modeMinusMin / shapeSizeRange) {
+		return minShapeSize + Math.sqrt(modeMinusMin * shapeSizeRange * p);
+	} else {
+		return maxShapeSize - Math.sqrt(shapeSizeRange * (maxShapeSize - modalShapeSize) * (1 - p));
+	}
+}
+
+/** Returns whether or not a shape can be expanded into a particular cell and if not then
+ *	which cell would cause a merger with another shape.
+ */
+function canExpand(x, y, shapeSet, color) {
+	if (cellCapacity[x][y] === 0) {
+		return [false, undefined];
+	}
+	if (shapeSet.has(`${x},${y}`)) {
+		return [false, undefined];
+	}
+	if (y > 0 && cellCapacity[x][y - 1] === gridDepth) {
+		// Can't be floating mid air.
+		return [false, undefined];
+	}
+	let depth;
+	if (x > 0) {
+		depth = getBuiltDepth(x - 1, y);
+		if (grid[x - 1][y][depth - 1] === color && !shapeSet.has(`${x - 1},${y}`)) {
+			return [false, [x - 1, y]];
+		}
+	}
+	if (x < gridWidth - 1) {
+		depth = getBuiltDepth(x + 1, y);
+		if (grid[x + 1][y][depth - 1] === color && !shapeSet.has(`${x + 1},${y}`)) {
+			return [false, [x + 1, y]];
+		}
+	}
+	if (y > 0) {
+		depth = getBuiltDepth(x, y - 1);
+		if (grid[x][y - 1][depth - 1] === color && !shapeSet.has(`${x},${y - 1}`)) {
+			return [false, [x, y - 1]];
+		}
+	}
+	if (y < gridHeight - 1) {
+		depth = getBuiltDepth(x, y + 1);
+		if (grid[x][y + 1][depth - 1] === color && !shapeSet.has(`${x},${y + 1}`)) {
+			return [false, [x, y + 1]];
+		}
+	}
+	return [true, undefined];
+}
+
+function shiftUp(x, y) {
+	if (grid[x][gridHeight - 1][0] === CellType.BLANK) {
+		totalCapacity += gridDepth;
+	}
+	for (let j = gridHeight - 2; j >= y; j--) {
+		grid[x][j + 1] = grid[x][j];
+		cellCapacity[x][j + 1] = cellCapacity[x][j];
+	}
+	const content = new Array(gridDepth);
+	content.fill(CellType.EMPTY);
+	grid[x][y] = content;
+	cellCapacity[x][y] = gridDepth;
+}
+
+function makeShape() {
+	let [x, y] = chooseCell();
+	let shapeSet = new Set();
+	shapeSet.add(`${x},${y}`);
+
+	const possibleColors = new Set();
+	for (let i = 0; i < numColors; i++) {
+		possibleColors.add(i + CellType.COLOR);
+	}
+	if (x > 0) {
+		const depth = getBuiltDepth(x - 1, y);
+		if (depth > 0) {
+			possibleColors.delete(grid[x - 1][y][depth - 1]);
+		}
+	}
+	if (x < gridWidth - 1) {
+		const depth = getBuiltDepth(x + 1, y);
+		if (depth > 0) {
+			possibleColors.delete(grid[x + 1][y][depth - 1]);
+		}
+	}
+	if (y > 0) {
+		const depth = getBuiltDepth(x, y - 1);
+		if (depth > 0) {
+			possibleColors.delete(grid[x][y - 1][depth - 1]);
+		}
+	}
+	if (y < gridHeight - 1) {
+		const depth = getBuiltDepth(x, y + 1);
+		if (depth > 0) {
+			possibleColors.delete(grid[x][y + 1][depth - 1]);
+		}
+	}
+
+	let color;
+	if (possibleColors.size > 0) {
+		const colorIndex = Math.trunc(random.next() * possibleColors.size);
+		let i = 0;
+		for (let value of possibleColors.values()) {
+			if (colorIndex === i) {
+				color = value;
+				break;
+			}
+			i++;
+		}
+	} else {
+		// TODO Decide if and how to merge with an existing shape
+		return false;
+	}
+
+	const expandable = new Set();
+	const targetSize = chooseShapeSize();
+
+	grid[x][y][getBuiltDepth(x, y)] = color;
+	cellCapacity[x][y]--;
+	totalCapacity--;
+
+	do {
+		if (x > 0) {
+			const attempt = canExpand(x - 1, y, shapeSet, color);
+			if (attempt[0]) {
+				expandable.add(`E,${x - 1},${y}`);
+			}
+		}
+		if (x < gridWidth - 1) {
+			const attempt = canExpand(x + 1, y, shapeSet, color);
+			if (attempt[0]) {
+				expandable.add(`E,${x + 1},${y}`);
+			}
+		}
+		if (y > 0) {
+			const attempt = canExpand(x, y - 1, shapeSet, color);
+			if (attempt[0]) {
+				expandable.add(`E,${x},${y - 1}`);
+			}
+		}
+		if (y < gridHeight - 1) {
+			const attempt = canExpand(x, y + 1, shapeSet, color);
+			if (attempt[0]) {
+				expandable.add(`E,${x},${y + 1}`);
+			}
+		}
+		if (expandable.size > 0) {
+			const index = Math.trunc(random.next() * expandable.size);
+			let i = 0;
+			for (let value of expandable.values()) {
+				if (index === i) {
+					const params = value.split(',', 3);
+					expandable.delete(value);
+					x = parseInt(params[1]);
+					y = parseInt(params[2]);
+
+					const canShiftUp = cellCapacity[x][y] !== gridDepth &&
+						(cellCapacity[x][gridHeight - 1] === gridDepth ||
+							grid[x][gridHeight - 1][0] === CellType.EMPTY);
+
+					if (canShiftUp && random.next() <= dropProbability) {
+						shiftUp(x, y);
+					}
+
+					grid[x][y][getBuiltDepth(x, y)] = color;
+					shapeSet.add(`${x},${y}`);
+					cellCapacity[x][y]--;
+					totalCapacity--;
+					break;
+				}
+				i++;
+			}
+		} else {
+			break;
+		}
+
+	} while (shapeSet.size < targetSize);
+
+	if (shapeSet.size < minRunLength) {
+		for (let coordStr of shapeSet.values()) {
+			const coords = coordStr.split(',', 2);
+			const x = parseInt(coords[0]);
+			const y = parseInt(coords[1]);
+			grid[x][y][getBuiltDepth(x, y) - 1] = CellType.EMPTY;
+			cellCapacity[x][y]++;
+			totalCapacity++;
+		}
+		return false;
+	}
+	return true;
+}
+
+function resizeCanvas() {
+	pxOffset = gridDepth <= 3 ? 4 : 3;
+	const totalOffset = (Math.max(gridDepth - 1, 0) + 1) * pxOffset;
+
+	cellSize = Math.min(
+		Math.trunc((parentElement.clientWidth - scrollbarSize) / gridWidth),
+		Math.trunc((parentElement.clientHeight - scrollbarSize) / gridHeight),
+		72 + totalOffset
+	);
+	boxSize = cellSize - totalOffset;
+	cornerSize = Math.round(boxSize * 0.08);
+
+	const canvas = context.canvas;
+	canvas.width = cellSize * gridWidth;
+	canvas.height = cellSize * gridHeight;
+	context.font = '16px sans-serif';
+	context.textAlign = 'center';
+	context.textBaseline = 'middle';
+}
+
+function drawCell(i, j, xOffset, yOffset, clipLeft, clipRight, clipTop) {
+	const content = grid[i][j];
+	const depth = getDepth(content);
+
+	const cellLeft = i * cellSize + xOffset;
+	const cellTop = (gridHeight - 1 - j) * cellSize + yOffset;
+	const startDepth = Math.max(0, depth - MAX_VISIBLE_DEPTH);
+	let left, right, top, bottom;
+
+	let zHeight = Math.min(gridDepth, MAX_VISIBLE_DEPTH) - 1;
+	for (let k = startDepth; k < depth; k++) {
+		left = cellLeft + pxOffset * zHeight;
+		right = Math.min(left + boxSize, cellLeft + cellSize - clipRight);
+		left = Math.max(left, cellLeft + clipLeft);
+		if (left >= right) {
+			continue;
+		}
+
+		top = cellTop + pxOffset * zHeight;
+		bottom = top + boxSize;
+		top = Math.max(top, cellTop + clipTop);
+		if (top >= bottom) {
+			continue;
+		}
+		context.fillStyle = getColor(content[k], depth - k - 1 - startDepth);
+		drawShape(left, right, top, bottom);
+		zHeight--;
+	}
+	if (depth > 0) {
+		context.fillStyle = '#f4f4f4';
+		context.fillText(depth, (left + right) / 2, (top + bottom) / 2);
+	}
+}
+
+function drawShape(left, right, top, bottom) {
+	context.beginPath();
+	context.moveTo(left + cornerSize, top);
+	context.lineTo(right - cornerSize, top);
+	context.arcTo(right, top, right, top + cornerSize, cornerSize);
+	context.lineTo(right, bottom - cornerSize);
+	context.arcTo(right, bottom, right - cornerSize, bottom, cornerSize);
+	context.lineTo(left + cornerSize, bottom);
+	context.arcTo(left, bottom, left, bottom - cornerSize, cornerSize);
+	context.lineTo(left, top + cornerSize);
+	context.arcTo(left, top, left + cornerSize, top, cornerSize);
+	context.fill();
+}
+
+function drawCanvas(animAmount) {
+	const canvas = context.canvas;
+	context.clearRect(0, 0, canvas.width, canvas.width);
+	for (let i = 0; i < gridWidth; i++) {
+		for (let j = 0; j < animStartHeight[i]; j++) {
+			drawCell(i, j, 0, 0, 0, 0, 0);
+		}
+		const yOffset = Math.min(animAmount, animLengthDown[i]) * cellSize;
+		for (let j = 0; j < gridHeight; j++) {
+			drawCell(i, j, 0, yOffset, 0, 0, 0);
+		}
+	}
+}
+
+let newSeed = true;
+
+function newGame() {
+	gridWidth = parseInt(document.getElementById('grid-width').value);
+	gridHeight = parseInt(document.getElementById('grid-height').value);
+	gridDepth = parseInt(document.getElementById('grid-depth').value);
+	numColors = parseInt(document.getElementById('num-colors').value);
+
+	const minShapeSizeInput = document.getElementById('shape-size-min');
+	const maxShapeSizeInput = document.getElementById('shape-size-max');
+	const modalShapeSizeInput = document.getElementById('shape-size-mode');
+	minRunLength = parseInt(document.getElementById('run-length').value);
+	minShapeSize = parseInt(minShapeSizeInput.value);
+	maxShapeSize = parseInt(maxShapeSizeInput.value);
+	modalShapeSize = parseInt(modalShapeSizeInput.value);
+	if (maxShapeSize < minShapeSize) {
+		[minShapeSize, maxShapeSize] = [maxShapeSize, minShapeSize];
+		minShapeSizeInput.value = minShapeSize;
+		maxShapeSizeInput.value = maxShapeSize;
+	}
+	if (modalShapeSize < minShapeSize) {
+		modalShapeSize = minShapeSize;
+	} else if (modalShapeSize > maxShapeSize) {
+		modalShapeSize = maxShapeSize;
+	}
+	modalShapeSizeInput.value = modalShapeSize;
+	shapeSizeRange = maxShapeSize - minShapeSize;
+
+	dropProbability = parseFloat(document.getElementById('drop-probability').value) / 100;
+
+	const seedInput = document.getElementById('random-seed');
+	const seedStr = seedInput.value;
+	if (!newSeed && /^\d{1,10}\n\d{1,10}\n\d{1,10}\n\d{1,10}$/.test(seedStr)) {
+		random = new RandomNumberGenerator(seedStr);
+	} else {
+		random = new RandomNumberGenerator();
+		seedInput.value = random.seed;
+	}
+
+	resizeCanvas();
+	emptyGrid();
+	let success;
+	do {
+		let attempts = 0;
+		do {
+			success = makeShape();
+			attempts++;
+		} while (!success && attempts < 1000);
+	} while (totalCapacity > 0 && success);
+	drawCanvas(0);
+	findTopShapes();
+}
+
+newGame();
+
+function findTopShapes() {
+	const toVisit = new Set();
+	for (let i = 0; i < gridWidth; i++) {
+		for (let j = 0; j < gridHeight; j++) {
+			toVisit.add(`${i},${j}`);
+		}
+	}
+	topShapes = [];
+	for (let coordStr of toVisit.values()) {
+		toVisit.delete(coordStr);
+		let coords = coordStr.split(',', 2);
+		let x = parseInt(coords[0]);
+		let y = parseInt(coords[1]);
+		const color = getTopColor(x, y);
+		if (color >= CellType.COLOR) {
+			const shape = new Set();
+			topShapes.push(shape);
+			const queue = new Set();
+			queue.add(coordStr);
+			for (coordStr of queue.values()) {
+				shape.add(coordStr);
+				queue.delete(coordStr);
+				toVisit.delete(coordStr);
+				coords = coordStr.split(',', 2);
+				x = parseInt(coords[0]);
+				y = parseInt(coords[1]);
+
+				if (x > 0) {
+					const leftColor = getTopColor(x - 1, y);
+					coordStr = `${x - 1},${y}`;
+					if (leftColor === color && toVisit.has(coordStr)) {
+						queue.add(coordStr);
+					}
+				}
+				if (x < gridWidth - 1) {
+					const rightColor = getTopColor(x + 1, y);
+					coordStr = `${x + 1},${y}`;
+					if (rightColor === color && toVisit.has(coordStr)) {
+						queue.add(coordStr);
+					}
+				}
+				if (y > 0) {
+					const belowColor = getTopColor(x, y - 1);
+					coordStr = `${x},${y - 1}`;
+					if (belowColor === color && toVisit.has(coordStr)) {
+						queue.add(coordStr);
+					}
+				}
+				if (y < gridHeight - 1) {
+					const aboveColor = getTopColor(x, y + 1);
+					coordStr = `${x},${y + 1}`;
+					if (aboveColor === color && toVisit.has(coordStr)) {
+						queue.add(coordStr);
+					}
+				}
+			}
+		}
+	}
+}
+
+function revealCells(x, y) {
+	let coordStr = `${x},${y}`;
+	for (let i = 0; i < topShapes.length; i++) {
+		const shape = topShapes[i];
+		if (shape.has(coordStr)) {
+			if (shape.size >= minRunLength) {
+				for (coordStr of shape.values()) {
+					const coords = coordStr.split(',', 2);
+					x = parseInt(coords[0]);
+					y = parseInt(coords[1]);
+					const depth = getDepth(grid[x][y]);
+					grid[x][y][depth - 1] = CellType.EMPTY;
+				}
+				drawCanvas(0);
+				findTopShapes();
+			}
+			break;
+		}
+	}
+}
+
+document.getElementById('run-length').addEventListener('input', function (event) {
+	const value = parseInt(this.value);
+	if (value > 1) {
+		minRunLength = value;
+		const minShapeSizeInput = document.getElementById('shape-size-min');
+		if (minRunLength > parseInt(minShapeSizeInput.value)) {
+			minShapeSizeInput.value = minRunLength;
+		}
+	}
+});
+
+document.getElementById('shape-size-min').addEventListener('input', function (event) {
+	const value = parseInt(this.value);
+	if (value > 1 && value < minRunLength) {
+		minRunLength = value;
+		document.getElementById('run-length').value = value;
+	}
+})
+
+document.getElementById('btn-random-game').addEventListener('click', function (event) {
+	newSeed = true;
+});
+
+document.getElementById('btn-seed-game').addEventListener('click', function (event) {
+	newSeed = false;
+});
+
+document.getElementById('game-parameters').addEventListener('submit', function (event) {
+	event.preventDefault();
+	newGame();
+});
+
+context.canvas.addEventListener('click', function (event) {
+	const x = Math.trunc(event.clientX / cellSize);
+	const y = gridHeight - 1 - Math.trunc(event.clientY / cellSize);
+	revealCells(x, y);
+});

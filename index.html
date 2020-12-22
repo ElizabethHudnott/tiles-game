@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<title>Tiles Game</title>
+	<link rel="stylesheet" href="main.css">
+	<script src="util.js" defer></script>
+	<script src="game.js" defer></script>
+	<meta name="viewport" content="initial-scale=1, minimum-scale=1">
+</head>
+<body>
+	<canvas id="canvas"></canvas>
+	<form class="table" id="game-parameters">
+		<div class="row">
+			<label for="grid-width">
+				Width
+			</label>
+			<div>
+				<input type="number" min="1" required value="9" id="grid-width">
+			</div>
+		</div>
+		<div class="row">
+			<label for="grid-height">
+				Height
+			</label>
+			<div>
+				<input type="number" min="1" required value="6" id="grid-height">
+			</div>
+		</div>
+		<div class="row">
+			<label for="grid-depth">
+				Depth
+			</label>
+			<div>
+				<input type="number" min="1" required value="2" id="grid-depth">
+			</div>
+		</div>
+		<div class="row">
+			<label for="num-colors">
+				Colours
+			</label>
+			<div>
+				<input type="number" min="1" max="7" required value="4" id="num-colors">
+			</div>
+		</div>
+		<div class="row">
+			<label for="run-length">
+				Minimum Run Length
+			</label>
+			<div>
+				<input type="number" min="2" required value="2" id="run-length">
+			</div>
+		</div>
+		<div class="row">
+			<label for="shape-size-min">
+				Minimum Group Size
+			</label>
+			<div>
+				<input type="number" min="2" required value="2" id="shape-size-min">
+			</div>
+		</div>
+		<div class="row">
+			<label for="shape-size-min">
+				Maximum Group Size
+			</label>
+			<div>
+				<input type="number" min="2" required value="8" id="shape-size-max">
+			</div>
+		</div>
+		<div class="row">
+			<label for="shape-size-min">
+				Modal Group Size
+			</label>
+			<div>
+				<input type="number" min="2" required value="3" id="shape-size-mode">
+			</div>
+		</div>
+		<div class="row">
+			<label for="drop-probability">
+				Drop Probability
+			</label>
+			<div>
+				<input type="number" min="0" max="100" step="2" required value="50" id="drop-probability"> %
+			</div>
+		</div>
+		<div class="row">
+			<label form="random-seed">
+				Random Seed
+			</label>
+			<div>
+				<textarea id="random-seed" cols="10" rows="4" minlength="7" maxlength="43" style="resize: none"></textarea>
+			</div>
+		</div>
+		<div class="row">
+			<div></div>
+			<div>
+				<button type="submit" id="btn-random-game">
+					Random Game
+				</button>
+				<button type="submit" id="btn-seed-game">
+					Seed Game
+				</button>
+			</div>
+		</div>
+	</form>
+</body>
+</html>
