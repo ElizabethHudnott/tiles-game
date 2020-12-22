@@ -29,6 +29,8 @@ const COLORS = [
 
 const MAX_VISIBLE_DEPTH = 4;
 
+const ANIM_TIME = 200;
+
 let parentElement = document.body;
 
 let gridWidth, gridHeight, gridDepth, numColors, grid;
@@ -39,7 +41,7 @@ let cellSize, boxSize, cornerSize, pxOffset;
 let cellCapacity, totalCapacity;
 let random;
 let topShapes;
-let animLengthDown, animStartHeight;
+let animLengthDown, maxAnimLength, animStartTime;
 
 const scrollbarSize = function () {
 	// Creating invisible container
@@ -62,6 +64,12 @@ const scrollbarSize = function () {
 	return scrollbarWidth;
 }();
 
+function noAnimation() {
+	for (let i = 0; i < gridWidth; i++) {
+		animLengthDown[i].fill(0);
+	}
+}
+
 function emptyGrid() {
 	grid = new Array(gridWidth);
 	cellCapacity = new Array(gridWidth);
@@ -77,10 +85,12 @@ function emptyGrid() {
 		}
 	}
 	totalCapacity = gridWidth * gridHeight * gridDepth;
-
 	animLengthDown = new Array(gridWidth);
-	animStartHeight = new Array(gridWidth);
-	animStartHeight.fill(gridHeight);
+	for (let i = 0; i < gridWidth; i++) {
+		const arr = new Array(gridHeight);
+		arr.fill(0);
+		animLengthDown[i] = arr;
+	}
 }
 
 /** Gets the number of tiles on a cell during play.
@@ -387,7 +397,7 @@ function drawCell(i, j, xOffset, yOffset, clipLeft, clipRight, clipTop) {
 			continue;
 		}
 		context.fillStyle = getColor(content[k], depth - k - 1 - startDepth);
-		drawShape(left, right, top, bottom);
+		drawTile(left, right, top, bottom);
 		zHeight--;
 	}
 	if (depth > 0) {
@@ -396,7 +406,7 @@ function drawCell(i, j, xOffset, yOffset, clipLeft, clipRight, clipTop) {
 	}
 }
 
-function drawShape(left, right, top, bottom) {
+function drawTile(left, right, top, bottom) {
 	context.beginPath();
 	context.moveTo(left + cornerSize, top);
 	context.lineTo(right - cornerSize, top);
@@ -414,11 +424,8 @@ function drawCanvas(animAmount) {
 	const canvas = context.canvas;
 	context.clearRect(0, 0, canvas.width, canvas.width);
 	for (let i = 0; i < gridWidth; i++) {
-		for (let j = 0; j < animStartHeight[i]; j++) {
-			drawCell(i, j, 0, 0, 0, 0, 0);
-		}
-		const yOffset = Math.min(animAmount, animLengthDown[i]) * cellSize;
 		for (let j = 0; j < gridHeight; j++) {
+			const yOffset = Math.round(Math.min(animAmount, animLengthDown[i][j]) * cellSize);
 			drawCell(i, j, 0, yOffset, 0, 0, 0);
 		}
 	}
@@ -539,24 +546,68 @@ function findTopShapes() {
 	}
 }
 
+function animate(time) {
+	if (animStartTime === undefined) {
+		animStartTime = time;
+	}
+	let steps = (time - animStartTime) / ANIM_TIME;
+	let done = false;
+	if (steps >= maxAnimLength) {
+		steps = maxAnimLength;
+		done = true;
+	}
+	drawCanvas(steps);
+	if (done) {
+		for (let i = 0; i < gridWidth; i++) {
+			for (let j = 1; j < gridHeight; j++) {
+				const yOffset = animLengthDown[i][j];
+				if (yOffset > 0) {
+					grid[i][j - yOffset] = grid[i][j];
+					const newCell = new Array(gridDepth);
+					newCell.fill(CellType.EMPTY);
+					grid[i][j] = newCell;
+				}
+			}
+		}
+		noAnimation();
+		findTopShapes();
+	} else {
+		requestAnimationFrame(animate);
+	}
+}
+
 function revealCells(x, y) {
 	let coordStr = `${x},${y}`;
-	for (let i = 0; i < topShapes.length; i++) {
-		const shape = topShapes[i];
+	maxAnimLength = 0;
+	for (let n = 0; n < topShapes.length; n++) {
+		const shape = topShapes[n];
 		if (shape.has(coordStr)) {
 			if (shape.size >= minRunLength) {
 				for (coordStr of shape.values()) {
 					const coords = coordStr.split(',', 2);
 					x = parseInt(coords[0]);
 					y = parseInt(coords[1]);
-					const depth = getDepth(grid[x][y]);
+					let depth = getDepth(grid[x][y]);
 					grid[x][y][depth - 1] = CellType.EMPTY;
+					depth--;
+					if (depth === 0) {
+						for (let j = y + 1; j < gridHeight; j++) {
+							animLengthDown[x][j]++;
+							maxAnimLength = Math.max(maxAnimLength, animLengthDown[x][j]);
+						}
+					}
 				}
-				drawCanvas(0);
-				findTopShapes();
+
 			}
 			break;
 		}
+	}
+	if (maxAnimLength > 0) {
+		animStartTime = undefined;
+		requestAnimationFrame(animate);
+	} else {
+		drawCanvas(0);
+		findTopShapes();
 	}
 }
 
