@@ -431,7 +431,7 @@ function drawCell(i, j, xOffset, yOffset, clipLeft, clipRight, clipTop) {
 		drawTile(left, right, top, bottom);
 		zHeight--;
 	}
-	if (depth > 0) {
+	if (depth > 0 && content[depth - 1] !== CellType.BLANK) {
 		context.fillStyle = '#f4f4f4';
 		context.fillText(depth, (left + right) / 2, (top + bottom) / 2);
 	}
@@ -455,7 +455,7 @@ function drawCanvas(animAmount) {
 	const canvas = context.canvas;
 	context.clearRect(0, 0, canvas.width, canvas.width);
 	for (let i = 0; i < gridWidth; i++) {
-		if (animLengthRight[i] === 0) {
+		if (animLengthRight[i] === 0) {	// Layer these columns first
 			for (let j = 0; j < gridHeight; j++) {
 				const yOffset = Math.round(Math.min(animAmount, animLengthDown[i][j]) * cellSize);
 				drawCell(i, j, 0, yOffset, 0, 0, 0);
@@ -463,9 +463,14 @@ function drawCanvas(animAmount) {
 		}
 	}
 	for (let i = 0; i < gridWidth; i++) {
-		const rightShift = animLengthRight[i];
-		if (rightShift !== 0) {
-			const xOffset = Math.round(Math.min(animAmount, rightShift) * cellSize);
+		let rightShift = animLengthRight[i];
+		if (rightShift !== 0) {	// These columns drawn on top
+			if (rightShift > animAmount) {
+				rightShift = animAmount;
+			} else if (rightShift < -animAmount) {
+				rightShift = -animAmount;
+			}
+			const xOffset = Math.round(rightShift * cellSize);
 			for (let j = 0; j < gridHeight; j++) {
 				const yOffset = Math.round(Math.min(animAmount, animLengthDown[i][j]) * cellSize);
 				drawCell(i, j, xOffset, yOffset, 0, 0, 0);
@@ -599,6 +604,7 @@ function animate(time) {
 	}
 	drawCanvas(steps);
 	if (done) {
+		// Shift rows down
 		for (let i = 0; i < gridWidth; i++) {
 			for (let j = 1; j < gridHeight; j++) {
 				const yOffset = animLengthDown[i][j];
@@ -610,7 +616,37 @@ function animate(time) {
 				}
 			}
 		}
+		// Shift columns right
+		const middleColNum = Math.trunc(gridWidth / 2) - 1;
+		for (let i = middleColNum; i >= 0; i--) {
+			const xOffset = animLengthRight[i];
+			if (xOffset > 0) {
+				grid[i + xOffset] = grid[i];
+				const newColumn = new Array(gridHeight);
+				grid[i] = newColumn;
+				for (let j = 0; j < gridHeight; j++) {
+					const newCell = new Array(gridDepth);
+					newCell.fill(CellType.EMPTY);
+					newColumn[j] = newCell;
+				}
+			}
+		}
+		// Shift columns left
+		for (let i = middleColNum + 1; i < gridWidth; i++) {
+			const xOffset = animLengthRight[i];
+			if (xOffset < 0) {
+				grid[i + xOffset] = grid[i];
+				const newColumn = new Array(gridHeight);
+				grid[i] = newColumn;
+				for (let j = 0; j < gridHeight; j++) {
+					const newCell = new Array(gridDepth);
+					newCell.fill(CellType.EMPTY);
+					newColumn[j] = newCell;
+				}
+			}
+		}
 		noAnimation();
+		drawCanvas(0);
 		findTopShapes();
 	} else {
 		requestAnimationFrame(animate);
@@ -624,6 +660,7 @@ function revealCells(x, y) {
 		const shape = topShapes[n];
 		if (shape.has(coordStr)) {
 			if (shape.size >= minRunLength) {
+				const columns = new Set();
 				for (coordStr of shape.values()) {
 					const coords = coordStr.split(',', 2);
 					x = parseInt(coords[0]);
@@ -632,13 +669,42 @@ function revealCells(x, y) {
 					grid[x][y][depth - 1] = CellType.EMPTY;
 					depth--;
 					if (depth === 0) {
+						columns.add(x);
 						for (let j = y + 1; j < gridHeight; j++) {
 							animLengthDown[x][j]++;
 							maxAnimLength = Math.max(maxAnimLength, animLengthDown[x][j]);
 						}
 					}
 				}
+				for (let i of columns.values()) {
+					let colorsFound = false;
+					for (let j = 0; j < gridHeight; j++) {
+						if (grid[i][j][0] >= CellType.COLOR) {
+							colorsFound = true;
+							break;
+						}
+					}
+					if (!colorsFound) {
+						// Erase blanks
+						for (let j = 0; j < gridHeight; j++) {
+							for (let k = 0; k < gridDepth; k++) {
+								grid[i][j][k] = CellType.EMPTY;
+							}
+						}
+						if (i < gridWidth / 2 - 1) {
+							for (let k = 0; k < i; k++) {
+								animLengthRight[k]++;
+								maxAnimLength = Math.max(maxAnimLength, animLengthRight[k]);
+							}
+						} else {
+							for (let k = i + 1; k < gridWidth; k++) {
+								animLengthRight[k]--;
+								maxAnimLength = Math.max(maxAnimLength, -animLengthRight[k]);
+							}
+						}
+					}
 
+				}
 			}
 			break;
 		}
@@ -688,6 +754,7 @@ document.getElementById('btn-empty').addEventListener('click', function (event) 
 	emptyGrid();
 	drawCanvas(0);
 	random.reset();
+	startColumn = Math.trunc(random.next() * gridWidth);
 });
 
 document.getElementById('btn-build').addEventListener('click', function (event) {
