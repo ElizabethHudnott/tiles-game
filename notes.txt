@@ -1,0 +1,20 @@
+mergeStatus of A into B:
+	All of B's cells are exposed
+	There isn't some C & D such that B > C (B is collapsed after C) or B > D and C & D are separated by B
+		* separated with or without gravity
+		* separated can include (partially obscured)?
+	* B doesn't depend on folding
+
+0 constraints satisfied and the total number of cells is less than or equal to the target
+1 constraints satisfied and the total number of cells is greater than the target but less than or equal to the maximum
+2 constraints satisfied and the total number of cells exceeds the maximum
+3 constraints not satisfied
+
+Need to retry expanding shapes if the reason for failing was column not yet tall enough
+
+const couldFold = random.next() <= foldProbability;
+foldProbability = parseFloat(document.getElementById('fold-probability').value) / 100;
+
+Bugs
+----
+5 layers, wrong shadows
