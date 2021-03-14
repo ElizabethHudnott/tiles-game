@@ -539,6 +539,13 @@ newGame();
 
 function setBombNeeded(needed) {
 	bombNeeded = needed;
+	let cursor;
+	if (needed) {
+		cursor = 'url(img/bomb-32.webp) 11 20, auto';
+	} else {
+		cursor = 'auto';
+	}
+	context.canvas.style.cursor = cursor;
 }
 
 function showBombsUsed() {
@@ -605,6 +612,7 @@ function findTopShapes() {
 			bombNeeded = bombNeeded && shape.size < minRunLength;
 		}
 	}
+	bombNeeded = bombNeeded && topShapes.length > 0;
 	setBombNeeded(bombNeeded);
 }
 

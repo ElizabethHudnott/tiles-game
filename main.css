@@ -1,3 +1,13 @@
+@font-face {
+	font-family: 'Another-Typewriter';
+	src:  url('fonts/Another-Typewriter.ttf.woff') format('woff');
+}
+
+.font-typewriter {
+	font-family: Another-Typewriter, monospace;
+	font-display: swap;
+}
+
 * {
 	box-sizing: border-box;
 }
@@ -6,6 +16,30 @@ body {
 	font-family: sans-serif;
 	min-height: 100vh;
 }
+
+/* Colours */
+
+.bg-secondary {
+	background-color: #cccccc;
+}
+
+/* Box model */
+
+.px-4, .p-4 {
+	padding-left: 2rem;
+	padding-right: 2rem;
+}
+
+.py-1, .p-1 {
+	padding-top: 0.25rem;
+	padding-bottom: 0.25rem;
+}
+
+.rounded-pill {
+	border-radius: 50rem;
+}
+
+/* Display property */
 
 .d-flex {
 	display: flex;
@@ -29,6 +63,11 @@ body {
 
 .row>* {
 	display: table-cell;
-	padding: 0.5em;
+	padding: 5px;
 	vertical-align: top;
+}
+
+/* Application specific */
+.status {
+	font-size: 2rem;
 }
