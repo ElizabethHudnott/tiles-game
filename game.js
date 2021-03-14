@@ -41,7 +41,8 @@ let blankProbability, dropProbability;
 let cellSize, boxSize, cornerSize, pxOffset;
 let cellCapacity, totalCapacity;
 let random;
-let topShapes;
+let topShapes, bombNeeded;
+let bombsUsed;
 let animLengthDown, animLengthRight, maxAnimLength, animStartTime;
 
 const scrollbarSize = function () {
@@ -482,6 +483,10 @@ function drawCanvas(animAmount) {
 let newSeed = true;
 
 function newGame() {
+	setBombNeeded(false);
+	bombsUsed = 0;
+	showBombsUsed();
+
 	gridWidth = parseInt(document.getElementById('grid-width').value);
 	gridHeight = parseInt(document.getElementById('grid-height').value);
 	gridDepth = parseInt(document.getElementById('grid-depth').value);
@@ -532,7 +537,16 @@ function newGame() {
 
 newGame();
 
+function setBombNeeded(needed) {
+	bombNeeded = needed;
+}
+
+function showBombsUsed() {
+	document.getElementById('bombs-used').innerHTML = bombsUsed;
+}
+
 function findTopShapes() {
+	let bombNeeded = true;
 	const toVisit = new Set();
 	for (let i = 0; i < gridWidth; i++) {
 		for (let j = 0; j < gridHeight; j++) {
@@ -588,8 +602,10 @@ function findTopShapes() {
 					}
 				}
 			}
+			bombNeeded = bombNeeded && shape.size < minRunLength;
 		}
 	}
+	setBombNeeded(bombNeeded);
 }
 
 function animate(time) {
@@ -654,61 +670,107 @@ function animate(time) {
 }
 
 function revealCells(x, y) {
-	let coordStr = `${x},${y}`;
 	maxAnimLength = 0;
-	for (let n = 0; n < topShapes.length; n++) {
-		const shape = topShapes[n];
-		if (shape.has(coordStr)) {
-			if (shape.size >= minRunLength) {
-				const columns = new Set();
-				for (coordStr of shape.values()) {
-					const coords = coordStr.split(',', 2);
-					x = parseInt(coords[0]);
-					y = parseInt(coords[1]);
-					let depth = getDepth(grid[x][y]);
-					grid[x][y][depth - 1] = CellType.EMPTY;
-					depth--;
-					if (depth === 0) {
-						columns.add(x);
-						for (let j = y + 1; j < gridHeight; j++) {
-							animLengthDown[x][j]++;
-							maxAnimLength = Math.max(maxAnimLength, animLengthDown[x][j]);
-						}
+	if (bombNeeded) {
+
+		// This is a simplification of the else part
+		let depth = getDepth(grid[x][y]);
+		if (depth > 0) {
+			grid[x][y][depth - 1] = CellType.EMPTY;
+			depth--;
+			bombsUsed++;
+			showBombsUsed();
+			if (depth === 0) {
+				maxAnimLength = 1;
+				for (let j = y + 1; j < gridHeight; j++) {
+					animLengthDown[x][j]++;
+				}
+				let colorsFound = false;
+				for (let j = 0; j < gridHeight; j++) {
+					if (grid[x][j][0] >= CellType.COLOR) {
+						colorsFound = true;
+						break;
 					}
 				}
-				for (let i of columns.values()) {
-					let colorsFound = false;
+				if (!colorsFound) {
+					// Erase blanks
 					for (let j = 0; j < gridHeight; j++) {
-						if (grid[i][j][0] >= CellType.COLOR) {
-							colorsFound = true;
-							break;
+						for (let k = 0; k < gridDepth; k++) {
+							grid[x][j][k] = CellType.EMPTY;
 						}
 					}
-					if (!colorsFound) {
-						// Erase blanks
-						for (let j = 0; j < gridHeight; j++) {
-							for (let k = 0; k < gridDepth; k++) {
-								grid[i][j][k] = CellType.EMPTY;
-							}
+					if (x < gridWidth / 2 - 1) {
+						for (let k = 0; k < x; k++) {
+							animLengthRight[k]++;
 						}
-						if (i < gridWidth / 2 - 1) {
-							for (let k = 0; k < i; k++) {
-								animLengthRight[k]++;
-								maxAnimLength = Math.max(maxAnimLength, animLengthRight[k]);
-							}
-						} else {
-							for (let k = i + 1; k < gridWidth; k++) {
-								animLengthRight[k]--;
-								maxAnimLength = Math.max(maxAnimLength, -animLengthRight[k]);
-							}
+					} else {
+						for (let k = x + 1; k < gridWidth; k++) {
+							animLengthRight[k]--;
 						}
 					}
-
 				}
 			}
-			break;
 		}
+
+	} else {
+
+		let coordStr = `${x},${y}`;
+		for (let n = 0; n < topShapes.length; n++) {
+			const shape = topShapes[n];
+			if (shape.has(coordStr)) {
+				if (shape.size >= minRunLength) {
+					const columns = new Set();
+					for (coordStr of shape.values()) {
+						const coords = coordStr.split(',', 2);
+						x = parseInt(coords[0]);
+						y = parseInt(coords[1]);
+						let depth = getDepth(grid[x][y]);
+						grid[x][y][depth - 1] = CellType.EMPTY;
+						depth--;
+						if (depth === 0) {
+							columns.add(x);
+							for (let j = y + 1; j < gridHeight; j++) {
+								animLengthDown[x][j]++;
+								maxAnimLength = Math.max(maxAnimLength, animLengthDown[x][j]);
+							}
+						}
+					}
+					for (let i of columns.values()) {
+						let colorsFound = false;
+						for (let j = 0; j < gridHeight; j++) {
+							if (grid[i][j][0] >= CellType.COLOR) {
+								colorsFound = true;
+								break;
+							}
+						}
+						if (!colorsFound) {
+							// Erase blanks
+							for (let j = 0; j < gridHeight; j++) {
+								for (let k = 0; k < gridDepth; k++) {
+									grid[i][j][k] = CellType.EMPTY;
+								}
+							}
+							if (i < gridWidth / 2 - 1) {
+								for (let k = 0; k < i; k++) {
+									animLengthRight[k]++;
+									maxAnimLength = Math.max(maxAnimLength, animLengthRight[k]);
+								}
+							} else {
+								for (let k = i + 1; k < gridWidth; k++) {
+									animLengthRight[k]--;
+									maxAnimLength = Math.max(maxAnimLength, -animLengthRight[k]);
+								}
+							}
+						}
+
+					}
+				}
+				break;
+			}
+		}
+
 	}
+
 	if (maxAnimLength > 0) {
 		animStartTime = undefined;
 		requestAnimationFrame(animate);
