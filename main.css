@@ -17,13 +17,30 @@ body {
 	min-height: 100vh;
 }
 
+
+/* Alignment */
+
+.text-right {
+	text-align: right;
+}
+
+
 /* Colours */
 
 .bg-secondary {
 	background-color: #cccccc;
 }
 
-/* Box model */
+/* Box model, sizing, etc. */
+
+.size-4 {
+	font-size: 2rem;
+}
+
+.gap-2>* {
+	margin-right: 0.5rem;
+	margin-bottom: 0.5rem;
+}
 
 .px-4, .p-4 {
 	padding-left: 2rem;
@@ -39,6 +56,11 @@ body {
 	border-radius: 50rem;
 }
 
+.w-auto {
+	width: fit-content;
+}
+
+
 /* Display property */
 
 .d-flex {
@@ -47,6 +69,10 @@ body {
 
 .align-items-start {
 	align-items: flex-start;
+}
+
+.align-items-end {
+	align-items: flex-end;
 }
 
 .flex-wrap {
@@ -65,9 +91,4 @@ body {
 	display: table-cell;
 	padding: 5px;
 	vertical-align: top;
-}
-
-/* Application specific */
-.status {
-	font-size: 2rem;
 }

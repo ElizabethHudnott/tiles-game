@@ -42,8 +42,8 @@ let cellSize, boxSize, cornerSize, pxOffset;
 let cellCapacity, totalCapacity;
 let random;
 let topShapes, bombNeeded;
-let bombsUsed;
-let animLengthDown, animLengthRight, maxAnimLength, animStartTime;
+let bombsUsed, startTime, timer;
+let animLengthDown, animLengthRight, maxAnimLength, animStartTime, animRequestID;
 
 const scrollbarSize = function () {
 	// Creating invisible container
@@ -71,6 +71,8 @@ function noAnimation() {
 		animLengthDown[i].fill(0);
 	}
 	animLengthRight.fill(0);
+	cancelAnimationFrame(animRequestID);
+	animRequestID = undefined;
 }
 
 function emptyGrid() {
@@ -96,6 +98,8 @@ function emptyGrid() {
 	}
 	animLengthRight = new Array(gridWidth);
 	animLengthRight.fill(0);
+	cancelAnimationFrame(animRequestID);
+	animRequestID = undefined;
 }
 
 /** Gets the number of tiles on a cell during play.
@@ -480,6 +484,51 @@ function drawCanvas(animAmount) {
 	}
 }
 
+function setBombNeeded(needed) {
+	bombNeeded = needed;
+	let cursor;
+	if (needed) {
+		cursor = 'url(img/bomb-32.webp) 11 20, auto';
+	} else {
+		cursor = 'auto';
+	}
+	context.canvas.style.cursor = cursor;
+}
+
+const timerElement = document.getElementById('time');
+
+function updateTime() {
+	let total = Math.round((performance.now() - startTime) / 1000);
+	const seconds = total % 60;
+	const secsStr = seconds.toString().padStart(2, '0');
+	total -= seconds;
+	const minutes = (total / 60) % 60;
+	total -= minutes * 60;
+	const hours = total / 3600;
+	if (hours > 0) {
+		const minsStr = minutes.toString().padStart(2, '0');
+		timerElement.innerHTML = `${hours}:${minsStr}:${secsStr}`;
+	} else {
+		timerElement.innerHTML = `${minutes}:${secsStr}`;
+	}
+}
+
+function resetTimer() {
+	timerElement.innerHTML = '0:00'
+	startTime = performance.now();
+}
+
+function startTimer() {
+	if (timer === undefined) {
+		timer = setInterval(updateTime, 1000);
+	}
+}
+
+function stopTimer() {
+	clearInterval(timer);
+	timer = undefined;
+}
+
 let newSeed = true;
 
 function newGame() {
@@ -533,20 +582,11 @@ function newGame() {
 	} while (totalCapacity > 0 && success);
 	drawCanvas(0);
 	findTopShapes();
+	resetTimer();
+	startTimer();
 }
 
 newGame();
-
-function setBombNeeded(needed) {
-	bombNeeded = needed;
-	let cursor;
-	if (needed) {
-		cursor = 'url(img/bomb-32.webp) 11 20, auto';
-	} else {
-		cursor = 'auto';
-	}
-	context.canvas.style.cursor = cursor;
-}
 
 function showBombsUsed() {
 	document.getElementById('bombs-used').innerHTML = bombsUsed;
@@ -612,11 +652,26 @@ function findTopShapes() {
 			bombNeeded = bombNeeded && shape.size < minRunLength;
 		}
 	}
-	bombNeeded = bombNeeded && topShapes.length > 0;
-	setBombNeeded(bombNeeded);
+	if (topShapes.length === 0) {
+		stopTimer();
+		setBombNeeded(false);
+	} else {
+		setBombNeeded(bombNeeded);
+	}
 }
 
-function animate(time) {
+function animate() {
+	if (maxAnimLength > 0) {
+		animStartTime = undefined;
+		animRequestID = requestAnimationFrame(drawFrame);
+	} else {
+		drawCanvas(0);
+		findTopShapes();
+	}
+
+}
+
+function drawFrame(time) {
 	if (animStartTime === undefined) {
 		animStartTime = time;
 	}
@@ -673,7 +728,7 @@ function animate(time) {
 		drawCanvas(0);
 		findTopShapes();
 	} else {
-		requestAnimationFrame(animate);
+		animRequestID = requestAnimationFrame(drawFrame);
 	}
 }
 
@@ -778,14 +833,7 @@ function revealCells(x, y) {
 		}
 
 	}
-
-	if (maxAnimLength > 0) {
-		animStartTime = undefined;
-		requestAnimationFrame(animate);
-	} else {
-		drawCanvas(0);
-		findTopShapes();
-	}
+	animate();
 }
 
 document.getElementById('run-length').addEventListener('input', function (event) {
@@ -834,6 +882,9 @@ document.getElementById('btn-build').addEventListener('click', function (event) 
 });
 
 context.canvas.addEventListener('click', function (event) {
+	if (animRequestID !== undefined) {
+		return;
+	}
 	const x = Math.trunc(event.clientX / cellSize);
 	const y = gridHeight - 1 - Math.trunc(event.clientY / cellSize);
 	revealCells(x, y);
