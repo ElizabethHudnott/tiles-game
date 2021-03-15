@@ -1,4 +1,6 @@
 'use strict';
+import timer from './timer.js';
+
 const context = document.getElementById('canvas').getContext('2d');
 
 const CellType = Object.freeze({
@@ -42,7 +44,7 @@ let cellSize, boxSize, cornerSize, pxOffset;
 let cellCapacity, totalCapacity;
 let random;
 let topShapes, bombNeeded;
-let bombsUsed, startTime, accumulatedTime, timer;
+let bombsUsed;
 let animLengthDown, animLengthRight, maxAnimLength, animStartTime, animRequestID;
 
 const scrollbarSize = function () {
@@ -495,51 +497,6 @@ function setBombNeeded(needed) {
 	context.canvas.style.cursor = cursor;
 }
 
-const timerElement = document.getElementById('time');
-
-function updateTime() {
-	let total = Math.round((accumulatedTime + performance.now() - startTime) / 1000);
-	const seconds = total % 60;
-	const secsStr = seconds.toString().padStart(2, '0');
-	total -= seconds;
-	const minutes = (total / 60) % 60;
-	total -= minutes * 60;
-	const hours = total / 3600;
-	if (hours > 0) {
-		const minsStr = minutes.toString().padStart(2, '0');
-		timerElement.innerHTML = `${hours}:${minsStr}:${secsStr}`;
-	} else {
-		timerElement.innerHTML = `${minutes}:${secsStr}`;
-	}
-}
-
-function resetTimer() {
-	timerElement.innerHTML = '0:00'
-	accumulatedTime = 0;
-	startTime = performance.now();
-}
-
-function startTimer() {
-	if (timer === undefined) {
-		timer = setInterval(updateTime, 1000);
-	}
-}
-
-function stopTimer() {
-	clearInterval(timer);
-	timer = undefined;
-}
-
-document.addEventListener('visibilitychange', function (event) {
-	if (document.hidden) {
-		accumulatedTime += performance.now() - startTime;
-		stopTimer();
-	} else if (startTime !== undefined) {
-		startTime = performance.now();
-		startTimer();
-	}
-})
-
 let newSeed = true;
 
 function newGame() {
@@ -593,8 +550,8 @@ function newGame() {
 	} while (totalCapacity > 0 && success);
 	drawCanvas(0);
 	findTopShapes();
-	resetTimer();
-	startTimer();
+	timer.reset();
+	timer.start();
 }
 
 newGame();
@@ -664,7 +621,7 @@ function findTopShapes() {
 		}
 	}
 	if (topShapes.length === 0) {
-		stopTimer();
+		timer.stop();
 		setBombNeeded(false);
 	} else {
 		setBombNeeded(bombNeeded);
@@ -736,7 +693,6 @@ function drawFrame(time) {
 			}
 		}
 		noAnimation();
-		drawCanvas(0);
 		findTopShapes();
 	} else {
 		animRequestID = requestAnimationFrame(drawFrame);
@@ -882,6 +838,7 @@ document.getElementById('game-parameters').addEventListener('submit', function (
 document.getElementById('btn-empty').addEventListener('click', function (event) {
 	emptyGrid();
 	drawCanvas(0);
+	timer.reset();
 	random.reset();
 	startColumn = Math.trunc(random.next() * gridWidth);
 });
@@ -893,6 +850,7 @@ document.getElementById('btn-build').addEventListener('click', function (event) 
 });
 
 context.canvas.addEventListener('click', function (event) {
+	timer.start();
 	if (animRequestID !== undefined) {
 		return;
 	}
