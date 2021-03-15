@@ -1,5 +1,6 @@
 const timerElement = document.getElementById('timer');
 let startTime, timer, accumulatedTime;
+let paused = false, running = false;
 
 function updateTime() {
 	let total = Math.round((accumulatedTime + performance.now() - startTime) / 1000);
@@ -20,34 +21,46 @@ function updateTime() {
 function reset() {
 	timerElement.innerHTML = '0:00'
 	accumulatedTime = 0;
-	startTime = undefined;
 	clearInterval(timer);
 	timer = undefined;
+	running = false;
+	paused = false;
 }
 
 function start() {
 	if (timer === undefined) {
 		startTime = performance.now();
 		timer = setInterval(updateTime, 1000);
+		running = true;
+		paused = false;
+	}
+}
+
+function stopCounting() {
+	if (running) {
+		updateTime();
+		accumulatedTime += performance.now() - startTime;
+		clearInterval(timer);
+		timer = undefined;
 	}
 }
 
 function pause() {
-	updateTime();
-	accumulatedTime += performance.now() - startTime;
-	clearInterval(timer);
-	timer = undefined;
+	stopCounting();
+	running = false;
+	paused = true;
 }
 
 function stop() {
-	pause();
-	startTime = undefined;
+	stopCounting();
+	running = false;
+	paused = false;
 }
 
 document.addEventListener('visibilitychange', function (event) {
-	if (document.hidden) {
-		pause();
-	} else if (startTime !== undefined) {
+	if (document.visibilityState !== 'visible') {
+		stopCounting();
+	} else if (running) {
 		start();
 	}
 });
@@ -60,7 +73,7 @@ Object.defineProperty(Timer, 'time', {
 });
 Object.defineProperty(Timer, 'paused', {
 	get: function () {
-		return timer === undefined && startTime !== undefined;
+		return paused;
 	}
 });
 export default Timer;
