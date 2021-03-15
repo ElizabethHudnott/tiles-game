@@ -405,7 +405,6 @@ function resizeCanvas() {
 	const canvas = context.canvas;
 	canvas.width = cellSize * gridWidth;
 	canvas.height = cellSize * gridHeight;
-	context.font = '16px sans-serif';
 	context.textAlign = 'center';
 	context.textBaseline = 'middle';
 }
@@ -461,6 +460,16 @@ function drawTile(left, right, top, bottom) {
 function drawCanvas(animAmount) {
 	const canvas = context.canvas;
 	context.clearRect(0, 0, canvas.width, canvas.width);
+
+	if (timer.paused) {
+		context.font = '3rem "Emilys Candy", fantasy';
+		context.fillStyle = 'Black';
+		context.fillText('Paused', Math.trunc(canvas.width / 2), Math.trunc(canvas.height / 2));
+		return;
+	}
+
+	context.font = '16px sans-serif';
+
 	for (let i = 0; i < gridWidth; i++) {
 		if (animLengthRight[i] === 0) {	// Layer these columns first
 			for (let j = 0; j < gridHeight; j++) {
@@ -548,10 +557,10 @@ function newGame() {
 	do {
 		success = addShape();
 	} while (totalCapacity > 0 && success);
-	drawCanvas(0);
-	findTopShapes();
 	timer.reset();
 	timer.start();
+	drawCanvas(0);
+	findTopShapes();
 }
 
 newGame();
@@ -803,6 +812,15 @@ function revealCells(x, y) {
 	animate();
 }
 
+document.getElementById('btn-pause').addEventListener('click', function (event) {
+	if (timer.paused) {
+		timer.start();
+	} else {
+		timer.pause();
+	}
+	drawCanvas(0);
+});
+
 document.getElementById('run-length').addEventListener('input', function (event) {
 	const value = parseInt(this.value);
 	if (value > 1) {
@@ -850,11 +868,16 @@ document.getElementById('btn-build').addEventListener('click', function (event) 
 });
 
 context.canvas.addEventListener('click', function (event) {
-	timer.start();
+	if (timer.paused) {
+		timer.start();
+		drawCanvas(0);
+		return;
+	}
 	if (animRequestID !== undefined) {
 		return;
 	}
-	const x = Math.trunc(event.clientX / cellSize);
-	const y = gridHeight - 1 - Math.trunc(event.clientY / cellSize);
+	timer.start();
+	const x = Math.trunc(event.offsetX / cellSize);
+	const y = gridHeight - 1 - Math.trunc(event.offsetY / cellSize);
 	revealCells(x, y);
 });

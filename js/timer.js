@@ -33,19 +33,15 @@ function start() {
 }
 
 function pause() {
+	updateTime();
 	accumulatedTime += performance.now() - startTime;
 	clearInterval(timer);
 	timer = undefined;
 }
 
 function stop() {
-	updateTime();
 	pause();
 	startTime = undefined;
-}
-
-function getTime() {
-	return accumulatedTime;
 }
 
 document.addEventListener('visibilitychange', function (event) {
@@ -56,5 +52,15 @@ document.addEventListener('visibilitychange', function (event) {
 	}
 });
 
-const Timer = {start, pause, stop, reset, getTime};
+const Timer = {start, pause, stop, reset};
+Object.defineProperty(Timer, 'time', {
+	get: function () {
+		return accumulatedTime;
+	}
+});
+Object.defineProperty(Timer, 'paused', {
+	get: function () {
+		return timer === undefined && startTime !== undefined;
+	}
+});
 export default Timer;

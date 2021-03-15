@@ -9,126 +9,131 @@
 	<meta name="viewport" content="initial-scale=1, minimum-scale=1">
 </head>
 <body>
-	<div>
-	<div class="d-flex align-items-start w-auto">
-		<canvas id="canvas"></canvas>
-		<div class="d-flex flex-wrap gap-2 font-typewriter">
-			<div id="bombs" class="d-flex align-items-end bg-secondary px-4 py-1 rounded-pill">
-				<img src="img/bomb-72.webp" alt="bombs">
-				<div id="bombs-used" class="size-4">0</div>
-			</div>
-			<div class="d-flex align-items-end bg-secondary px-4 py-1 rounded-pill">
-				<img src="img/stopwatch-60.webp" alt="timer">
-				<div id="timer" class="size-4 text-right"  style="min-width: 4ch">0:00</div>
+	<div class="container">
+		<h1 style="font-family: 'Emilys Candy'">Tiles Game</h1>
+		<div class="d-flex align-items-start w-auto">
+			<canvas id="canvas"></canvas>
+			<div class="d-flex flex-column gap-2 font-typewriter">
+				<div id="bombs" class="d-flex align-items-end bg-secondary px-4 py-1 rounded-pill text-right">
+					<img src="img/bomb-72.webp" alt="Bombs" width="72" height="72" class="mr-2">
+					<div id="bombs-used" class="size-4">0</div>
+				</div>
+				<div class="d-flex align-items-end bg-secondary px-4 py-1 rounded-pill">
+					<img src="img/stopwatch-72.webp" alt="Timer" width="72" height="72">
+					<div id="timer" class="size-4 text-right"  style="min-width: 4ch">0:00</div>
+				</div>
+				<button class="bg-secondary px-4 py-1 rounded-pill border-0" id="btn-pause">
+					<img src="img/pause.webp" alt="Pause" width="72" height="72">
+				</button>
 			</div>
 		</div>
+		<form class="table" id="game-parameters">
+			<div class="row">
+				<label for="grid-width">
+					Width
+				</label>
+				<div>
+					<input type="number" min="1" required value="9" id="grid-width">
+				</div>
+			</div>
+			<div class="row">
+				<label for="grid-height">
+					Height
+				</label>
+				<div>
+					<input type="number" min="1" required value="6" id="grid-height">
+				</div>
+			</div>
+			<div class="row">
+				<label for="grid-depth">
+					Depth
+				</label>
+				<div>
+					<input type="number" min="1" required value="2" id="grid-depth">
+				</div>
+			</div>
+			<div class="row">
+				<label for="num-colors">
+					Colours
+				</label>
+				<div>
+					<input type="number" min="2" max="7" required value="4" id="num-colors">
+				</div>
+			</div>
+			<div class="row">
+				<label for="run-length">
+					Minimum Run Length
+				</label>
+				<div>
+					<input type="number" min="2" required value="2" id="run-length">
+				</div>
+			</div>
+			<div class="row">
+				<label for="blank-probability">
+					Blank Probability
+				</label>
+				<div>
+					<input type="number" min="0" max="100" step="2" required value="0" id="blank-probability"> %
+				</div>
+			</div>
+			<div class="row">
+				<label for="shape-size-min">
+					Minimum Group Size
+				</label>
+				<div>
+					<input type="number" min="2" required value="2" id="shape-size-min">
+				</div>
+			</div>
+			<div class="row">
+				<label for="shape-size-min">
+					Maximum Group Size
+				</label>
+				<div>
+					<input type="number" min="2" required value="8" id="shape-size-max">
+				</div>
+			</div>
+			<div class="row">
+				<label for="shape-size-min">
+					Modal Group Size
+				</label>
+				<div>
+					<input type="number" min="2" required value="3" id="shape-size-mode">
+				</div>
+			</div>
+			<div class="row">
+				<label for="drop-probability">
+					Drop Probability
+				</label>
+				<div>
+					<input type="number" min="0" max="100" step="2" required value="50" id="drop-probability"> %
+				</div>
+			</div>
+			<div class="row">
+				<label form="random-seed">
+					Random Seed
+				</label>
+				<div>
+					<textarea id="random-seed" cols="10" rows="4" minlength="7" maxlength="43" style="resize: none"></textarea>
+				</div>
+			</div>
+			<div class="row">
+				<div></div>
+				<div>
+					<button type="submit" id="btn-random-game">
+						Random Game
+					</button>
+					<button type="submit" id="btn-seed-game">
+						Seed Game
+					</button>
+					<button type="button" id="btn-empty">
+						Clear
+					</button>
+					<button type="button" id="btn-build">
+						Add Group
+					</button>
+				</div>
+			</div>
+		</form>
 	</div>
-	<form class="table" id="game-parameters">
-		<div class="row">
-			<label for="grid-width">
-				Width
-			</label>
-			<div>
-				<input type="number" min="1" required value="9" id="grid-width">
-			</div>
-		</div>
-		<div class="row">
-			<label for="grid-height">
-				Height
-			</label>
-			<div>
-				<input type="number" min="1" required value="6" id="grid-height">
-			</div>
-		</div>
-		<div class="row">
-			<label for="grid-depth">
-				Depth
-			</label>
-			<div>
-				<input type="number" min="1" required value="2" id="grid-depth">
-			</div>
-		</div>
-		<div class="row">
-			<label for="num-colors">
-				Colours
-			</label>
-			<div>
-				<input type="number" min="2" max="7" required value="4" id="num-colors">
-			</div>
-		</div>
-		<div class="row">
-			<label for="run-length">
-				Minimum Run Length
-			</label>
-			<div>
-				<input type="number" min="2" required value="2" id="run-length">
-			</div>
-		</div>
-		<div class="row">
-			<label for="blank-probability">
-				Blank Probability
-			</label>
-			<div>
-				<input type="number" min="0" max="100" step="2" required value="0" id="blank-probability"> %
-			</div>
-		</div>
-		<div class="row">
-			<label for="shape-size-min">
-				Minimum Group Size
-			</label>
-			<div>
-				<input type="number" min="2" required value="2" id="shape-size-min">
-			</div>
-		</div>
-		<div class="row">
-			<label for="shape-size-min">
-				Maximum Group Size
-			</label>
-			<div>
-				<input type="number" min="2" required value="8" id="shape-size-max">
-			</div>
-		</div>
-		<div class="row">
-			<label for="shape-size-min">
-				Modal Group Size
-			</label>
-			<div>
-				<input type="number" min="2" required value="3" id="shape-size-mode">
-			</div>
-		</div>
-		<div class="row">
-			<label for="drop-probability">
-				Drop Probability
-			</label>
-			<div>
-				<input type="number" min="0" max="100" step="2" required value="50" id="drop-probability"> %
-			</div>
-		</div>
-		<div class="row">
-			<label form="random-seed">
-				Random Seed
-			</label>
-			<div>
-				<textarea id="random-seed" cols="10" rows="4" minlength="7" maxlength="43" style="resize: none"></textarea>
-			</div>
-		</div>
-		<div class="row">
-			<div></div>
-			<div>
-				<button type="submit" id="btn-random-game">
-					Random Game
-				</button>
-				<button type="submit" id="btn-seed-game">
-					Seed Game
-				</button>
-				<button type="button" id="btn-empty">
-					Clear
-				</button>
-				<button type="button" id="btn-build">
-					Add Group
-				</button>
-			</div>
-		</div>
-	</form>
 </body>
 </html>

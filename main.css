@@ -1,15 +1,22 @@
 @font-face {
 	font-family: 'Another-Typewriter';
-	src:  url('fonts/Another-Typewriter.ttf.woff') format('woff');
+	font-display: swap;
+	src:  url('fonts/Another-Typewriter.woff') format('woff');
 }
 
 .font-typewriter {
 	font-family: Another-Typewriter, monospace;
+}
+
+@font-face {
+	font-family: 'Emilys Candy';
 	font-display: swap;
+    src: url('fonts/Emilys-Candy.woff2') format('woff2');
 }
 
 * {
 	box-sizing: border-box;
+	--secondary: #cccccc;
 }
 
 body {
@@ -28,17 +35,26 @@ body {
 /* Colours */
 
 .bg-secondary {
-	background-color: #cccccc;
+	background-color: var(--secondary);
 }
 
 /* Box model, sizing, etc. */
+
+.container {
+	margin-left: auto;
+	margin-right: auto;
+	width: fit-content;
+}
 
 .size-4 {
 	font-size: 2rem;
 }
 
-.gap-2>* {
+.gapx-2>*, .gap-2>*, .mr-2 {
 	margin-right: 0.5rem;
+}
+
+.gapy-2>*, .gap-2>*, .mb-2 {
 	margin-bottom: 0.5rem;
 }
 
@@ -50,6 +66,15 @@ body {
 .py-1, .p-1 {
 	padding-top: 0.25rem;
 	padding-bottom: 0.25rem;
+}
+
+button.border-0 {
+	border: 3px solid transparent;
+	outline: none;
+}
+
+.border-0:focus {
+	border: 3px solid;
 }
 
 .rounded-pill {
@@ -73,6 +98,10 @@ body {
 
 .align-items-end {
 	align-items: flex-end;
+}
+
+.flex-column {
+	flex-direction: column;
 }
 
 .flex-wrap {
