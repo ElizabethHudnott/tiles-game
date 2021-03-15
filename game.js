@@ -42,7 +42,7 @@ let cellSize, boxSize, cornerSize, pxOffset;
 let cellCapacity, totalCapacity;
 let random;
 let topShapes, bombNeeded;
-let bombsUsed, startTime, timer;
+let bombsUsed, startTime, accumulatedTime, timer;
 let animLengthDown, animLengthRight, maxAnimLength, animStartTime, animRequestID;
 
 const scrollbarSize = function () {
@@ -498,7 +498,7 @@ function setBombNeeded(needed) {
 const timerElement = document.getElementById('time');
 
 function updateTime() {
-	let total = Math.round((performance.now() - startTime) / 1000);
+	let total = Math.round((accumulatedTime + performance.now() - startTime) / 1000);
 	const seconds = total % 60;
 	const secsStr = seconds.toString().padStart(2, '0');
 	total -= seconds;
@@ -515,6 +515,7 @@ function updateTime() {
 
 function resetTimer() {
 	timerElement.innerHTML = '0:00'
+	accumulatedTime = 0;
 	startTime = performance.now();
 }
 
@@ -528,6 +529,16 @@ function stopTimer() {
 	clearInterval(timer);
 	timer = undefined;
 }
+
+document.addEventListener('visibilitychange', function (event) {
+	if (document.hidden) {
+		accumulatedTime += performance.now() - startTime;
+		stopTimer();
+	} else if (startTime !== undefined) {
+		startTime = performance.now();
+		startTimer();
+	}
+})
 
 let newSeed = true;
 
