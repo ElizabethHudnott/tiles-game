@@ -34,7 +34,7 @@ const MAX_VISIBLE_DEPTH = 4;
 const ANIM_TIME = 200;
 
 let parentElement = document.body;
-
+let gravity;
 let gridWidth, gridHeight, gridDepth, numColors;
 let grid, startColumn;
 let minShapeSize, maxShapeSize, modalShapeSize, shapeSizeRange;
@@ -401,6 +401,7 @@ function resizeCanvas() {
 	);
 	boxSize = cellSize - totalOffset;
 	cornerSize = Math.round(boxSize * 0.08);
+	gravity = 2 * cellSize / (ANIM_TIME * ANIM_TIME);
 
 	const canvas = context.canvas;
 	canvas.width = cellSize * gridWidth;
@@ -433,7 +434,7 @@ function drawCell(i, j, xOffset, yOffset, clipLeft, clipRight, clipTop) {
 		if (top >= bottom) {
 			continue;
 		}
-		context.fillStyle = getColor(content[k], depth - k - 1 - startDepth);
+		context.fillStyle = getColor(content[k], depth - k - 1);
 		drawTile(left, right, top, bottom);
 		zHeight--;
 	}
@@ -652,7 +653,8 @@ function drawFrame(time) {
 	if (animStartTime === undefined) {
 		animStartTime = time;
 	}
-	let steps = (time - animStartTime) / ANIM_TIME;
+	const timeDiff = time - animStartTime;
+	let steps = 0.5 * gravity * timeDiff * timeDiff / cellSize;
 	let done = false;
 	if (steps >= maxAnimLength) {
 		steps = maxAnimLength;
