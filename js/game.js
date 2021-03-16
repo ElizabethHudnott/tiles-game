@@ -854,9 +854,9 @@ document.getElementById('game-parameters').addEventListener('submit', function (
 });
 
 document.getElementById('btn-empty').addEventListener('click', function (event) {
+	timer.reset();
 	emptyGrid();
 	drawCanvas(0);
-	timer.reset();
 	random.reset();
 	startColumn = Math.trunc(random.next() * gridWidth);
 });
