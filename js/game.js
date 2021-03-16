@@ -10,28 +10,22 @@ const CellType = Object.freeze({
 });
 
 const COLORS = [
-	'#666666',					// Gray
-	'hsl( 15, 100%, 60%)',		// Red
-	'hsl(105, 100%, 46%)',		// Green
-	'hsl(225, 100%, 62%)',		// Blue
-	'hsl( 45, 100%, 60%)',		// Yellow
-	'hsl(195, 100%, 60%)',		// Cyan
-	'hsl(315, 100%, 72%)',		// Pink
-	'hsl(280, 100%, 55%)',		// Purple
-	// Shadowed versions
-	'#444444',					// Gray
-	'hsl( 15, 100%, 40%)',		// Red
-	'hsl(105, 100%, 28%)',		// Green
-	'hsl(225, 100%, 40%)',		// Blue
-	'hsl( 45, 100%, 30%)',		// Yellow
-	'hsl(195, 100%, 40%)',		// Cyan
-	'hsl(315, 100%, 45%)',		// Pink
-	'hsl(280, 100%, 37%)',		// Purple
+	[  0,   0, 40],		// Gray
+	[ 15, 100, 60],		// Red
+	[105, 100, 46],		// Green
+	[225, 100, 62],		// Blue
+	[ 45, 100, 60],		// Yellow
+	[195, 100, 60],		// Cyan
+	[315, 100, 72],		// Pink
+	[280, 100, 55],		// Purple
 ];
+
+const DARKEN = [27, 40, 28, 40, 30, 40, 45, 37];
 
 const MAX_VISIBLE_DEPTH = 4;
 
-const ANIM_TIME = 200;
+const FALL_TIME = 150;
+const FADE_TIME = 150;
 
 let parentElement = document.body;
 let gravity;
@@ -45,7 +39,7 @@ let cellCapacity, totalCapacity;
 let random;
 let topShapes, bombNeeded;
 let bombsUsed;
-let animLengthDown, animLengthRight, maxAnimLength, animStartTime, animRequestID;
+let animLengthDown, animLengthRight, animFade, maxAnimLength, animStartTime, animRequestID;
 
 const scrollbarSize = function () {
 	// Creating invisible container
@@ -67,6 +61,39 @@ const scrollbarSize = function () {
 
 	return scrollbarWidth;
 }();
+
+function debugGrid() {
+	let str = '';
+	for (let j = gridHeight - 1; j >= 0; j--) {
+		for (let i = 0; i < gridWidth; i++) {
+			const content = grid[i][j];
+			let blanks = 1;
+			for (let k = gridDepth - 1; k >= 0; k--) {
+				if (content[k] === CellType.EMPTY) {
+					blanks++;
+				} else {
+					str += content[k].toString();
+				}
+			}
+			str += ' '.repeat(blanks);
+		}
+		str += '\n';
+	}
+	console.log(str);
+}
+
+function noFade() {
+	for (let i = 0; i < gridWidth; i++) {
+		for (let j = 0; j < gridHeight; j++) {
+			if (animFade[i][j]) {
+				const content = grid[i][j]
+				const depth = getDepth(content);
+				content[depth - 1] = CellType.EMPTY;
+				animFade[i][j] = false;
+			}
+		}
+	}
+}
 
 function noAnimation() {
 	for (let i = 0; i < gridWidth; i++) {
@@ -93,10 +120,14 @@ function emptyGrid() {
 	}
 	totalCapacity = gridWidth * gridHeight * gridDepth;
 	animLengthDown = new Array(gridWidth);
+	animFade = new Array(gridWidth);
 	for (let i = 0; i < gridWidth; i++) {
-		const arr = new Array(gridHeight);
+		let arr = new Array(gridHeight);
 		arr.fill(0);
 		animLengthDown[i] = arr;
+		arr = new Array(gridHeight);
+		arr.fill(false);
+		animFade[i] = arr;
 	}
 	animLengthRight = new Array(gridWidth);
 	animLengthRight.fill(0);
@@ -134,14 +165,18 @@ function getBuiltDepth(x, y) {
 
 /** The depth parameter is backwards in this function. Higher numbers are underneath.
  */
-function getColor(i, depth) {
+function getColor(i, depth, opacity) {
 	if (depth > 1) {
 		const gray = 152 - (depth - 1) * 32;
 		return `rgb(${gray}, ${gray}, ${gray})`;
 	} else if (depth === 0) {
-		return COLORS[i - 1];
+		const values = COLORS[i - 1];
+		return `hsla(${values[0]}, ${values[1]}%, ${values[2]}%, ${opacity})`;
 	} else {
-		return COLORS[i + 7];
+		const values = COLORS[i - 1];
+		// Darken
+		const brightness = opacity * DARKEN[i - 1] + (1 - opacity) * values[2];
+		return `hsla(${values[0]}, ${values[1]}%, ${brightness}%, 1)`;
 	}
 }
 
@@ -401,7 +436,7 @@ function resizeCanvas() {
 	);
 	boxSize = cellSize - totalOffset;
 	cornerSize = Math.round(boxSize * 0.08);
-	gravity = 2 * cellSize / (ANIM_TIME * ANIM_TIME);
+	gravity = 2 * cellSize / (FALL_TIME * FALL_TIME);
 
 	const canvas = context.canvas;
 	canvas.width = cellSize * gridWidth;
@@ -410,7 +445,7 @@ function resizeCanvas() {
 	context.textBaseline = 'middle';
 }
 
-function drawCell(i, j, xOffset, yOffset, clipLeft, clipRight, clipTop) {
+function drawCell(i, j, xOffset, yOffset, opacity) {
 	const content = grid[i][j];
 	const depth = getDepth(content);
 
@@ -422,25 +457,27 @@ function drawCell(i, j, xOffset, yOffset, clipLeft, clipRight, clipTop) {
 	let zHeight = Math.min(gridDepth, MAX_VISIBLE_DEPTH) - 1;
 	for (let k = startDepth; k < depth; k++) {
 		left = cellLeft + pxOffset * zHeight;
-		right = Math.min(left + boxSize, cellLeft + cellSize - clipRight);
-		left = Math.max(left, cellLeft + clipLeft);
+		right = Math.min(left + boxSize, cellLeft + cellSize);
+		left = Math.max(left, cellLeft);
 		if (left >= right) {
 			continue;
 		}
 
 		top = cellTop + pxOffset * zHeight;
 		bottom = top + boxSize;
-		top = Math.max(top, cellTop + clipTop);
+		top = Math.max(top, cellTop);
 		if (top >= bottom) {
 			continue;
 		}
-		context.fillStyle = getColor(content[k], depth - k - 1);
+		context.fillStyle = getColor(content[k], depth - k - 1, opacity);
 		drawTile(left, right, top, bottom);
 		zHeight--;
 	}
 	if (depth > 0 && content[depth - 1] !== CellType.BLANK) {
 		context.fillStyle = '#f4f4f4';
-		context.fillText(depth, (left + right) / 2, (top + bottom) / 2);
+		const textOffset = opacity === 1 ? 0 : pxOffset * (1 - opacity);
+		const numLayers = opacity > 0.5 ? depth : depth - 1;
+		context.fillText(numLayers, (left + right) / 2 + textOffset, (top + bottom) / 2 + textOffset);
 	}
 }
 
@@ -458,7 +495,7 @@ function drawTile(left, right, top, bottom) {
 	context.fill();
 }
 
-function drawCanvas(animAmount) {
+function drawCanvas(animAmount = 0, opacity = 1) {
 	const canvas = context.canvas;
 	context.clearRect(0, 0, canvas.width, canvas.width);
 
@@ -472,26 +509,16 @@ function drawCanvas(animAmount) {
 	context.font = '16px sans-serif';
 
 	for (let i = 0; i < gridWidth; i++) {
-		if (animLengthRight[i] === 0) {	// Layer these columns first
-			for (let j = 0; j < gridHeight; j++) {
-				const yOffset = Math.round(Math.min(animAmount, animLengthDown[i][j]) * cellSize);
-				drawCell(i, j, 0, yOffset, 0, 0, 0);
-			}
-		}
-	}
-	for (let i = 0; i < gridWidth; i++) {
 		let rightShift = animLengthRight[i];
-		if (rightShift !== 0) {	// These columns drawn on top
-			if (rightShift > animAmount) {
-				rightShift = animAmount;
-			} else if (rightShift < -animAmount) {
-				rightShift = -animAmount;
-			}
-			const xOffset = Math.round(rightShift * cellSize);
-			for (let j = 0; j < gridHeight; j++) {
-				const yOffset = Math.round(Math.min(animAmount, animLengthDown[i][j]) * cellSize);
-				drawCell(i, j, xOffset, yOffset, 0, 0, 0);
-			}
+		if (rightShift > animAmount) {
+			rightShift = animAmount;
+		} else if (rightShift < -animAmount) {
+			rightShift = -animAmount;
+		}
+		const xOffset = Math.round(rightShift * cellSize);
+		for (let j = 0; j < gridHeight; j++) {
+			const yOffset = Math.round(Math.min(animAmount, animLengthDown[i][j]) * cellSize);
+			drawCell(i, j, xOffset, yOffset, animFade[i][j] ? opacity : 1);
 		}
 	}
 }
@@ -560,7 +587,7 @@ function newGame() {
 	} while (totalCapacity > 0 && success);
 	timer.reset();
 	timer.start();
-	drawCanvas(0);
+	drawCanvas();
 	findTopShapes();
 }
 
@@ -639,14 +666,8 @@ function findTopShapes() {
 }
 
 function animate() {
-	if (maxAnimLength > 0) {
-		animStartTime = undefined;
-		animRequestID = requestAnimationFrame(drawFrame);
-	} else {
-		drawCanvas(0);
-		findTopShapes();
-	}
-
+	animStartTime = undefined;
+	animRequestID = requestAnimationFrame(drawFrame);
 }
 
 function drawFrame(time) {
@@ -655,13 +676,15 @@ function drawFrame(time) {
 	}
 	const timeDiff = time - animStartTime;
 	let steps = 0.5 * gravity * timeDiff * timeDiff / cellSize;
+	const opacity = 1 - Math.min(timeDiff / FADE_TIME, 1);
 	let done = false;
 	if (steps >= maxAnimLength) {
 		steps = maxAnimLength;
 		done = true;
 	}
-	drawCanvas(steps);
+	drawCanvas(steps, opacity);
 	if (done) {
+		noFade();
 		// Shift rows down
 		for (let i = 0; i < gridWidth; i++) {
 			for (let j = 1; j < gridHeight; j++) {
@@ -711,7 +734,7 @@ function drawFrame(time) {
 }
 
 function revealCells(x, y) {
-	maxAnimLength = 0;
+	maxAnimLength = 1;
 	if (bombNeeded) {
 
 		// This is a simplification of the else part
@@ -722,7 +745,6 @@ function revealCells(x, y) {
 			bombsUsed++;
 			showBombsUsed();
 			if (depth === 0) {
-				maxAnimLength = 1;
 				for (let j = y + 1; j < gridHeight; j++) {
 					animLengthDown[x][j]++;
 				}
@@ -766,20 +788,35 @@ function revealCells(x, y) {
 						x = parseInt(coords[0]);
 						y = parseInt(coords[1]);
 						let depth = getDepth(grid[x][y]);
-						grid[x][y][depth - 1] = CellType.EMPTY;
 						depth--;
+						let fade = false;
 						if (depth === 0) {
 							columns.add(x);
+							if (
+								y === gridHeight - 1 ||
+								grid[x][y + 1][0] === CellType.EMPTY ||
+								shape.has(`${x},${y + 1}`)
+							) {
+								fade = true;
+							}
 							for (let j = y + 1; j < gridHeight; j++) {
 								animLengthDown[x][j]++;
 								maxAnimLength = Math.max(maxAnimLength, animLengthDown[x][j]);
 							}
+						} else {
+							fade = true;
+						}
+						if (fade) {
+							animFade[x][y] = true;
+						} else {
+							grid[x][y][depth] = CellType.EMPTY;
 						}
 					}
 					for (let i of columns.values()) {
 						let colorsFound = false;
 						for (let j = 0; j < gridHeight; j++) {
-							if (grid[i][j][0] >= CellType.COLOR) {
+							const checkDepth = animFade[i][j] ? 1 : 0;
+							if (grid[i][j][checkDepth] >= CellType.COLOR) {
 								colorsFound = true;
 								break;
 							}
@@ -820,7 +857,7 @@ document.getElementById('btn-pause').addEventListener('click', function (event) 
 	} else {
 		timer.pause();
 	}
-	drawCanvas(0);
+	drawCanvas();
 });
 
 document.getElementById('run-length').addEventListener('input', function (event) {
@@ -858,21 +895,23 @@ document.getElementById('game-parameters').addEventListener('submit', function (
 document.getElementById('btn-empty').addEventListener('click', function (event) {
 	timer.reset();
 	emptyGrid();
-	drawCanvas(0);
+	drawCanvas();
 	random.reset();
 	startColumn = Math.trunc(random.next() * gridWidth);
 });
 
 document.getElementById('btn-build').addEventListener('click', function (event) {
+	noFade();
+	noAnimation();
 	addShape();
-	drawCanvas(0);
+	drawCanvas();
 	findTopShapes();
 });
 
 context.canvas.addEventListener('click', function (event) {
 	if (timer.paused) {
 		timer.start();
-		drawCanvas(0);
+		drawCanvas();
 		return;
 	}
 	if (animRequestID !== undefined) {
