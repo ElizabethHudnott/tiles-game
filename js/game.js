@@ -1,4 +1,4 @@
-'use strict';
+import Particle from './particle.js';
 import timer from './timer.js';
 
 const context = document.getElementById('canvas').getContext('2d');
@@ -24,8 +24,11 @@ const DARKEN = [27, 40, 28, 40, 30, 40, 45, 37];
 
 const MAX_VISIBLE_DEPTH = 4;
 
+const TIME_PER_FRAME = 1000 / 60;
 const FALL_TIME = 150;
 const FADE_TIME = 150;
+const MIN_PARTICLE_SIZE = 10;
+const PARTICLE_SPEED = 18 / TIME_PER_FRAME;
 
 let parentElement = document.body;
 let gravity;
@@ -39,7 +42,9 @@ let cellCapacity, totalCapacity;
 let random;
 let topShapes, bombNeeded;
 let bombsUsed;
-let animLengthDown, animLengthRight, animFade, maxAnimLength, animStartTime, animRequestID;
+let animLengthDown, animLengthRight, animFade, maxAnimLength, animStartTime, blocksMoving;
+let explosionVectors;
+const particles = [];
 
 const scrollbarSize = function () {
 	// Creating invisible container
@@ -95,13 +100,12 @@ function noFade() {
 	}
 }
 
-function noAnimation() {
+function noBlocksMoving() {
 	for (let i = 0; i < gridWidth; i++) {
 		animLengthDown[i].fill(0);
 	}
 	animLengthRight.fill(0);
-	cancelAnimationFrame(animRequestID);
-	animRequestID = undefined;
+	blocksMoving = false;
 }
 
 function emptyGrid() {
@@ -131,8 +135,7 @@ function emptyGrid() {
 	}
 	animLengthRight = new Array(gridWidth);
 	animLengthRight.fill(0);
-	cancelAnimationFrame(animRequestID);
-	animRequestID = undefined;
+	blocksMoving = false;
 }
 
 /** Gets the number of tiles on a cell during play.
@@ -436,7 +439,24 @@ function resizeCanvas() {
 	);
 	boxSize = cellSize - totalOffset;
 	cornerSize = Math.round(boxSize * 0.08);
+
 	gravity = 2 * cellSize / (FALL_TIME * FALL_TIME);
+
+	const numDivisions = Math.max(Math.trunc(boxSize / MIN_PARTICLE_SIZE), 2);
+	const particleSize = boxSize / numDivisions;
+	explosionVectors = new Array(numDivisions);
+	for (let i = 0; i < numDivisions; i++) {
+		explosionVectors[i] = new Array(numDivisions);
+		for (let j = 0; j < numDivisions; j++) {
+			const centreX = (i + 0.5 - numDivisions / 2) * particleSize;
+			const centreY = (j + 0.5 - numDivisions / 2) * particleSize;
+			const speed = Math.hypot(centreX, centreY) / Math.SQRT2 * PARTICLE_SPEED;
+			const angle = Math.atan2(centreY, centreX);
+			const velocityX = speed * Math.cos(angle);
+			const velocityY = -speed * Math.sin(angle);
+			explosionVectors[i][j] = [velocityX, velocityY];
+		}
+	}
 
 	const canvas = context.canvas;
 	canvas.width = cellSize * gridWidth;
@@ -473,10 +493,10 @@ function drawCell(i, j, xOffset, yOffset, opacity) {
 		drawTile(left, right, top, bottom);
 		zHeight--;
 	}
-	if (depth > 0 && content[depth - 1] !== CellType.BLANK) {
+	const numLayers = opacity > 0.5 ? depth : depth - 1;
+	if (numLayers > 0 && content[numLayers - 1] !== CellType.BLANK) {
 		context.fillStyle = '#f4f4f4';
 		const textOffset = opacity === 1 ? 0 : pxOffset * (1 - opacity);
-		const numLayers = opacity > 0.5 ? depth : depth - 1;
 		context.fillText(numLayers, (left + right) / 2 + textOffset, (top + bottom) / 2 + textOffset);
 	}
 }
@@ -667,7 +687,8 @@ function findTopShapes() {
 
 function animate() {
 	animStartTime = undefined;
-	animRequestID = requestAnimationFrame(drawFrame);
+	blocksMoving = true;
+	requestAnimationFrame(drawFrame);
 }
 
 function drawFrame(time) {
@@ -677,13 +698,25 @@ function drawFrame(time) {
 	const timeDiff = time - animStartTime;
 	let steps = 0.5 * gravity * timeDiff * timeDiff / cellSize;
 	const opacity = 1 - Math.min(timeDiff / FADE_TIME, 1);
-	let done = false;
+	let doneFalling = false;
 	if (steps >= maxAnimLength) {
 		steps = maxAnimLength;
-		done = true;
+		doneFalling = true;
 	}
-	drawCanvas(steps, opacity);
-	if (done) {
+	drawCanvas(blocksMoving ? steps : 0, opacity);
+
+	const canvas = context.canvas;
+	const canvasWidth = canvas.width;
+	const canvasHeight = canvas.height;
+	for (let i = particles.length - 1; i >= 0; i--) {
+		const particle = particles[i];
+		const visible = particle.updateAndDraw(context, canvasWidth, canvasHeight, gravity);
+		if (!visible) {
+			particles.splice(i, 1);
+		}
+	}
+
+	if (blocksMoving && doneFalling) {
 		noFade();
 		// Shift rows down
 		for (let i = 0; i < gridWidth; i++) {
@@ -726,10 +759,33 @@ function drawFrame(time) {
 				}
 			}
 		}
-		noAnimation();
+		noBlocksMoving();
 		findTopShapes();
-	} else {
-		animRequestID = requestAnimationFrame(drawFrame);
+	}
+	if (blocksMoving || particles.length > 0) {
+		requestAnimationFrame(drawFrame);
+	}
+}
+
+function createExplosion(x, y, depth) {
+	const numDivisions = explosionVectors.length;
+	const size = boxSize / numDivisions;
+	const colorID = grid[x][y][depth - 1] - 1;
+	const colorValues = COLORS[colorID];
+	const color = `hsla(${colorValues[0]}, ${colorValues[1]}%, ${colorValues[2]}%, 1)`;
+	const zHeight = Math.min(gridDepth, MAX_VISIBLE_DEPTH) - depth + 1;
+	const left = x * cellSize + zHeight * pxOffset;
+	const top = (gridHeight - 1 - y) * cellSize + zHeight * pxOffset;
+	for (let i = 0; i < numDivisions; i++) {
+		const particleX = left + (i + 0.5) * size;
+		for (let j = 0; j < numDivisions; j++) {
+			const [velocityX, velocityY] = explosionVectors[i][j];
+			if (velocityX !== 0 || velocityY !== 0) {
+				const particleY = top + (j + 0.5) * size;
+				const particle = new Particle(particleX, particleY, velocityX, velocityY, size, color);
+				particles.push(particle);
+			}
+		}
 	}
 }
 
@@ -740,6 +796,7 @@ function revealCells(x, y) {
 		// This is a simplification of the else part
 		let depth = getDepth(grid[x][y]);
 		if (depth > 0) {
+			createExplosion(x, y, depth);
 			grid[x][y][depth - 1] = CellType.EMPTY;
 			depth--;
 			bombsUsed++;
@@ -902,7 +959,7 @@ document.getElementById('btn-empty').addEventListener('click', function (event) 
 
 document.getElementById('btn-build').addEventListener('click', function (event) {
 	noFade();
-	noAnimation();
+	noBlocksMoving();
 	addShape();
 	drawCanvas();
 	findTopShapes();
@@ -914,7 +971,7 @@ context.canvas.addEventListener('click', function (event) {
 		drawCanvas();
 		return;
 	}
-	if (animRequestID !== undefined) {
+	if (blocksMoving) {
 		return;
 	}
 	timer.start();
