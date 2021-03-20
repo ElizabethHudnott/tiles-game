@@ -3,12 +3,17 @@
 <head>
 	<title>Tiles Game</title>
 	<link rel="stylesheet" href="main.css">
-	<script src="js/util.js" defer></script>
+	<link rel="preload" as="font" href="fonts/Another-Typewriter.woff" crossorigin>
+	<link rel="preload" as="font" href="fonts/Emilys-Candy.woff2" crossorigin>
+	<link rel="preload" as="fetch" href="sound/laser.mp3">
+	<link rel="preload" as="fetch" href="sound/smash.mp3">
 	<script type="module" src="js/components.js"></script>
-	<script type="module" src="js/Particle.js"></script>
+	<script type="module" src="js/particle.js"></script>
 	<script type="module" src="js/timer.js"></script>
-	<script type="module" src="js/game.js" defer></script>
+	<script src="js/util.js" defer></script>
+	<script type="module" src="js/game.js"></script>
 	<meta name="viewport" content="initial-scale=1, minimum-scale=1">
+	<meta name="description" content="An exploration of match three games with a gravity mechanic.">
 </head>
 <body>
 	<div class="container">
@@ -70,11 +75,11 @@
 				</div>
 			</div>
 			<div class="row">
-				<label for="blank-probability">
-					Blank Probability
+				<label for="blank-percentage">
+					Blank %
 				</label>
 				<div>
-					<input type="number" min="0" max="100" step="2" required value="0" id="blank-probability"> %
+					<input type="number" min="0" max="96" step="4" required value="0" id="blank-percentage"> %
 				</div>
 			</div>
 			<div class="row">
@@ -86,7 +91,7 @@
 				</div>
 			</div>
 			<div class="row">
-				<label for="shape-size-min">
+				<label for="shape-size-max">
 					Maximum Group Size
 				</label>
 				<div>
@@ -94,7 +99,7 @@
 				</div>
 			</div>
 			<div class="row">
-				<label for="shape-size-min">
+				<label for="shape-size-mode">
 					Modal Group Size
 				</label>
 				<div>
@@ -110,7 +115,7 @@
 				</div>
 			</div>
 			<div class="row">
-				<label form="random-seed">
+				<label for="random-seed">
 					Random Seed
 				</label>
 				<div>
@@ -144,10 +149,11 @@
 		<div class="modal-body">
 			<h1 style="font-family: 'Emilys Candy'">Tiles Game</h1>
 			<p>
-				An implementation by Elizabeth Hudnott. An exploration of the mechanics of <a href="https://www.games.co.uk/game/tiles" target="_blank" rel="noreferer">Tiles</a> by <a href="https://kizi.com" target="_blank" rel="noreferer">Kizi</a>.
+				An implementation by Elizabeth Hudnott. An exploration of the mechanics of <a href="https://www.games.co.uk/game/tiles" target="_blank" rel="noreferrer">Tiles</a> by <a href="https://kizi.com" target="_blank" rel="noreferrer">Kizi</a>.
 			</p>
 			<p>
-				<a href="https://freesound.org/people/jobro/sounds/35677" target="_blank" rel="noreferer">Laser shots</a> sound by jobro, licensed under <a href="https://creativecommons.org/licenses/by/3.0" rel="noreferer">CC By Attribution 3</a>.
+				<a href="https://freesound.org/people/jobro/sounds/35677" target="_blank" rel="noopener">Laser shots</a> sound by jobro, licensed under <a href="https://creativecommons.org/licenses/by/3.0" rel="noopener">CC By Attribution 3</a>.<br>
+				<a href="https://freesound.org/people/Nox_Sound/sounds/554367" target="_blank" rel="noopener">Foley_Impact_Smash_Tiles</a> sound by Nox_Sound.
 			</p>
 		</div>
 		<div class="modal-footer">

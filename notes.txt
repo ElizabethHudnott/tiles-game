@@ -14,7 +14,3 @@ Need to retry expanding shapes if the reason for failing was column not yet tall
 
 const couldFold = random.next() <= foldProbability;
 foldProbability = parseFloat(document.getElementById('fold-probability').value) / 100;
-
-Bugs
-----
-5 layers, wrong shadows

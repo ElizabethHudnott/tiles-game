@@ -33,6 +33,12 @@ function toggleModal(event) {
 	}
 }
 
+modalBackdrop.addEventListener('click', function (event) {
+	if (event.target === this) {
+		closeModal();
+	}
+})
+
 for (let element of document.querySelectorAll('button[data-toggle="modal"]')) {
 	element.addEventListener('click', toggleModal);
 }
