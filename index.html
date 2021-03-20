@@ -4,13 +4,14 @@
 	<title>Tiles Game</title>
 	<link rel="stylesheet" href="main.css">
 	<script src="js/util.js" defer></script>
-	<script type="module" src="js/timer.js" defer></script>
+	<script type="module" src="js/components.js"></script>
+	<script type="module" src="js/Particle.js"></script>
+	<script type="module" src="js/timer.js"></script>
 	<script type="module" src="js/game.js" defer></script>
 	<meta name="viewport" content="initial-scale=1, minimum-scale=1">
 </head>
 <body>
 	<div class="container">
-		<h1 style="font-family: 'Emilys Candy'">Tiles Game</h1>
 		<div class="d-flex align-items-start w-auto">
 			<canvas id="canvas"></canvas>
 			<div class="d-flex flex-column gap-2 font-typewriter">
@@ -131,9 +132,27 @@
 					<button type="button" id="btn-build">
 						Add Group
 					</button>
+					<button type="button" id="btn-about" data-toggle="modal" data-target="about-modal">
+						?
+					</button>
 				</div>
 			</div>
 		</form>
+	</div>
+
+	<div class="modal fade" id="about-modal">
+		<div class="modal-body">
+			<h1 style="font-family: 'Emilys Candy'">Tiles Game</h1>
+			<p>
+				An implementation by Elizabeth Hudnott. An exploration of the mechanics of <a href="https://www.games.co.uk/game/tiles" target="_blank" rel="noreferer">Tiles</a> by <a href="https://kizi.com" target="_blank" rel="noreferer">Kizi</a>.
+			</p>
+			<p>
+				<a href="https://freesound.org/people/jobro/sounds/35677" target="_blank" rel="noreferer">Laser shots</a> sound by jobro, licensed under <a href="https://creativecommons.org/licenses/by/3.0" rel="noreferer">CC By Attribution 3</a>.
+			</p>
+		</div>
+		<div class="modal-footer">
+			<button type="button" data-dismiss="modal">Return to Game</button>
+		</div>
 	</div>
 </body>
 </html>

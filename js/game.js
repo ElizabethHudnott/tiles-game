@@ -1,7 +1,10 @@
+import Components from './components.js';
 import Particle from './particle.js';
 import timer from './timer.js';
 
 const context = document.getElementById('canvas').getContext('2d');
+const audioContext = new AudioContext();
+const sounds = new Map();
 
 const CellType = Object.freeze({
 	EMPTY: 0,
@@ -42,9 +45,53 @@ let cellCapacity, totalCapacity;
 let random;
 let topShapes, bombNeeded;
 let bombsUsed;
-let animLengthDown, animLengthRight, animFade, maxAnimLength, animStartTime, blocksMoving;
+let animLengthDown, animLengthRight, animFade, maxAnimLength, animStartTime;
 let explosionVectors;
 const particles = [];
+
+function loadSound(label, url) {
+	return fetch(url)
+	.then(function (response) {
+		if (!response.ok) {
+			throw new Error(`${url}: HTTP ${response.status} - ${response.statusText}`);
+		}
+		return response.arrayBuffer();
+	})
+	.then(function (arrayBuffer) {
+		return audioContext.decodeAudioData(arrayBuffer);
+	})
+	.then(function (audioBuffer) {
+		sounds.set(label, audioBuffer);
+	});
+}
+
+loadSound('laser', '../sound/laser.mp3');
+loadSound('smash', '../sound/smash.mp3');
+
+function panSound(label, pan) {
+	const buffer = sounds.get(label);
+	if (buffer === undefined) {
+		return;
+	}
+	const panner = audioContext.createStereoPanner();
+	panner.pan.value = pan;
+	panner.connect(audioContext.destination);
+	const source = audioContext.createBufferSource();
+	source.buffer = buffer;
+	source.connect(panner);
+	source.start();
+}
+
+function playSound(label) {
+	const buffer = sounds.get(label);
+	if (buffer === undefined) {
+		return;
+	}
+	const source = audioContext.createBufferSource();
+	source.buffer = buffer;
+	source.connect(audioContext.destination);
+	source.start();
+}
 
 const scrollbarSize = function () {
 	// Creating invisible container
@@ -105,7 +152,7 @@ function noBlocksMoving() {
 		animLengthDown[i].fill(0);
 	}
 	animLengthRight.fill(0);
-	blocksMoving = false;
+	maxAnimLength = 0;
 }
 
 function emptyGrid() {
@@ -135,7 +182,7 @@ function emptyGrid() {
 	}
 	animLengthRight = new Array(gridWidth);
 	animLengthRight.fill(0);
-	blocksMoving = false;
+	maxAnimLength = 0;
 }
 
 /** Gets the number of tiles on a cell during play.
@@ -687,7 +734,6 @@ function findTopShapes() {
 
 function animate() {
 	animStartTime = undefined;
-	blocksMoving = true;
 	requestAnimationFrame(drawFrame);
 }
 
@@ -703,7 +749,7 @@ function drawFrame(time) {
 		steps = maxAnimLength;
 		doneFalling = true;
 	}
-	drawCanvas(blocksMoving ? steps : 0, opacity);
+	drawCanvas(steps, opacity);
 
 	const canvas = context.canvas;
 	const canvasWidth = canvas.width;
@@ -716,7 +762,7 @@ function drawFrame(time) {
 		}
 	}
 
-	if (blocksMoving && doneFalling) {
+	if (maxAnimLength > 0 && doneFalling) {
 		noFade();
 		// Shift rows down
 		for (let i = 0; i < gridWidth; i++) {
@@ -762,7 +808,7 @@ function drawFrame(time) {
 		noBlocksMoving();
 		findTopShapes();
 	}
-	if (blocksMoving || particles.length > 0) {
+	if (maxAnimLength > 0 || particles.length > 0) {
 		requestAnimationFrame(drawFrame);
 	}
 }
@@ -790,13 +836,13 @@ function createExplosion(x, y, depth) {
 }
 
 function revealCells(x, y) {
-	maxAnimLength = 1;
 	if (bombNeeded) {
 
 		// This is a simplification of the else part
 		let depth = getDepth(grid[x][y]);
 		if (depth > 0) {
 			createExplosion(x, y, depth);
+			maxAnimLength = 1;
 			grid[x][y][depth - 1] = CellType.EMPTY;
 			depth--;
 			bombsUsed++;
@@ -830,6 +876,8 @@ function revealCells(x, y) {
 					}
 				}
 			}
+			const pan = 0.5 * x / (gridWidth - 1) - 1;
+			panSound('smash', pan);
 		}
 
 	} else {
@@ -839,6 +887,7 @@ function revealCells(x, y) {
 			const shape = topShapes[n];
 			if (shape.has(coordStr)) {
 				if (shape.size >= minRunLength) {
+					maxAnimLength = 1;
 					const columns = new Set();
 					for (coordStr of shape.values()) {
 						const coords = coordStr.split(',', 2);
@@ -899,6 +948,7 @@ function revealCells(x, y) {
 						}
 
 					}
+					playSound('laser');
 				}
 				break;
 			}
@@ -971,11 +1021,27 @@ context.canvas.addEventListener('click', function (event) {
 		drawCanvas();
 		return;
 	}
-	if (blocksMoving) {
+	if (maxAnimLength > 0) {
 		return;
 	}
 	timer.start();
+	audioContext.resume();
 	const x = Math.trunc(event.offsetX / cellSize);
 	const y = gridHeight - 1 - Math.trunc(event.offsetY / cellSize);
 	revealCells(x, y);
 });
+
+function pauseGame() {
+	timer.pause();
+	drawCanvas();
+}
+
+function resumeGame() {
+	timer.resume();
+	drawCanvas();
+}
+
+for (let modal of document.querySelectorAll('.modal')) {
+	modal.addEventListener('shown.modal', pauseGame);
+	modal.addEventListener('hidden.modal', resumeGame);
+}

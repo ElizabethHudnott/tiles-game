@@ -46,9 +46,17 @@ function stopCounting() {
 }
 
 function pause() {
-	stopCounting();
-	running = false;
-	paused = true;
+	if (running) {
+		stopCounting();
+		running = false;
+		paused = true;
+	}
+}
+
+function resume() {
+	if (paused) {
+		start();
+	}
 }
 
 function stop() {
@@ -65,7 +73,7 @@ document.addEventListener('visibilitychange', function (event) {
 	}
 });
 
-const Timer = {start, pause, stop, reset};
+const Timer = {start, pause, resume, stop, reset};
 Object.defineProperty(Timer, 'time', {
 	get: function () {
 		return accumulatedTime;
