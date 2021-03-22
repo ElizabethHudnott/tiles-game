@@ -39,7 +39,7 @@
 					Width
 				</label>
 				<div>
-					<input type="number" min="1" required value="9" id="grid-width">
+					<input type="number" min="2" max="37" required value="9" id="grid-width">
 				</div>
 			</div>
 			<div class="row">
@@ -47,7 +47,7 @@
 					Height
 				</label>
 				<div>
-					<input type="number" min="1" required value="6" id="grid-height">
+					<input type="number" min="2" max="37" required value="6" id="grid-height">
 				</div>
 			</div>
 			<div class="row">
@@ -79,7 +79,16 @@
 					Blank %
 				</label>
 				<div>
-					<input type="number" min="0" max="96" step="4" required value="0" id="blank-percentage"> %
+					<input type="number" min="0" max="99" step="3" required value="0" id="blank-percentage"> %
+				</div>
+			</div>
+			<div class="row">
+				<div></div>
+				<div class="form-check">
+					<input type="checkbox" id="color-over-blank">
+					<label for="color-over-blank">
+						Place colours over blanks
+					</label>
 				</div>
 			</div>
 			<div class="row">
@@ -111,7 +120,7 @@
 					Drop Probability
 				</label>
 				<div>
-					<input type="number" min="0" max="100" step="2" required value="50" id="drop-probability"> %
+					<input type="number" min="0" max="99" step="3" required value="51" id="drop-probability"> %
 				</div>
 			</div>
 			<div class="row">

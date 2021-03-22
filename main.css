@@ -19,8 +19,15 @@
 	--secondary: #cccccc;
 }
 
+
+/* General tags */
+
 body {
 	font-family: sans-serif;
+}
+
+small {
+	font-size: 80%;
 }
 
 
@@ -118,6 +125,16 @@ button.border-0 {
 	display: table-cell;
 	padding: 5px;
 	vertical-align: top;
+}
+
+
+/* Forms */
+.form-check>* {
+	vertical-align: middle;
+}
+
+.form-check>label {
+	font-size: 80%;
 }
 
 

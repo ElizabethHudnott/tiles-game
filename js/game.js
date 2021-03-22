@@ -39,7 +39,7 @@ let gridWidth, gridHeight, gridDepth, numColors;
 let grid, startColumn;
 let minShapeSize, maxShapeSize, modalShapeSize, shapeSizeRange;
 let minRunLength = parseInt(document.getElementById('run-length').value) || 2;
-let blankProportion, dropProbability;
+let blankProportion, colorOverBlank, dropProbability;
 let cellSize, boxSize, cornerSize, pxOffset;
 let cellCapacity, totalCapacity, blanksPlaced, colorsPlaced;
 let random;
@@ -123,11 +123,13 @@ globalThis.debugGrid = function () {
 		for (let i = 0; i < gridWidth; i++) {
 			const content = grid[i][j];
 			let spaces = 1;
+			let countingEmpties = true;
 			for (let k = gridDepth - 1; k >= 0; k--) {
-				if (content[k] === CellType.EMPTY) {
+				if (content[k] === CellType.EMPTY && countingEmpties) {
 					spaces++;
 				} else {
 					str += content[k].toString();
+					countingEmpties = false;
 				}
 			}
 			str += ' '.repeat(spaces);
@@ -334,14 +336,27 @@ function shiftUp(x, y) {
 
 	const topCellContent = grid[x][gridHeight - 1];
 	if (topCellContent[0] === CellType.BLANK) {
-		topCellContent[0] = CellType.EMPTY;
-		totalCapacity += gridDepth;
+		if (colorOverBlank) {
+			topCellContent.shift();
+			topCellContent[gridDepth - 1] = CellType.EMPTY;
+			cellCapacity[x][gridHeight - 1]++;
+			totalCapacity++;
+		} else {
+			topCellContent[0] = CellType.EMPTY;
+			cellCapacity[x][gridHeight - 1] = gridDepth;
+			totalCapacity += gridDepth;
+		}
 		blanksPlaced--;
 	}
 }
 
 function canPlaceBlank(x, y) {
-	if (y === gridHeight - 1 || cellCapacity[x][y] !== gridDepth) {
+	if (y === gridHeight - 1 || grid[x][y][0] === CellType.BLANK) {
+		return false;
+	}
+	const capacity = cellCapacity[x][y];
+	const sufficentCapacity = colorOverBlank ? capacity > 0 : capacity === gridDepth;
+	if (!sufficentCapacity) {
 		return false;
 	}
 	if (y === 0) {
@@ -362,9 +377,15 @@ function makeShape() {
 	const numUnused = numSquares - colorsPlaced - blanksPlaced;
 	const blankProbability = (blankProportion * numSquares - blanksPlaced) / numUnused;
 	if (random.next() < blankProbability && canPlaceBlank(x, y)) {
-		grid[x][y][0] = CellType.BLANK;
-		cellCapacity[x][y] = 0;
-		totalCapacity -= gridDepth;
+		if (colorOverBlank) {
+			grid[x][y] = [CellType.BLANK].concat(grid[x][y].slice(0, gridDepth - 1));
+			cellCapacity[x][y]--;
+			totalCapacity--;
+		} else {
+			grid[x][y][0] = CellType.BLANK;
+			cellCapacity[x][y] = 0;
+			totalCapacity -= gridDepth;
+		}
 		blanksPlaced++;
 		return true;
 	}
@@ -497,7 +518,7 @@ function makeShape() {
 		}
 	}
 	totalCapacity -= shapeSet.size;
-
+console.log(cellCapacity[2]);
 	return true;
 }
 
@@ -671,6 +692,7 @@ function newGame() {
 
 	dropProbability = parseFloat(document.getElementById('drop-probability').value) / 100;
 	blankProportion = parseFloat(document.getElementById('blank-percentage').value) / 100;
+	colorOverBlank = document.getElementById('color-over-blank').checked;
 
 	const seedInput = document.getElementById('random-seed');
 	const seedStr = seedInput.value;
@@ -889,7 +911,9 @@ function revealCells(x, y) {
 				}
 				let colorsFound = false;
 				for (let j = 0; j < gridHeight; j++) {
-					if (grid[x][j][0] >= CellType.COLOR) {
+					const content = grid[x][j];
+					const checkDepth = content[0] === CellType.BLANK ? 1 : 0;
+					if (content[checkDepth] >= CellType.COLOR) {
 						colorsFound = true;
 						break;
 					}
@@ -947,6 +971,9 @@ function revealCells(x, y) {
 							}
 						} else {
 							fade = true;
+							if (depth === 1 && grid[x][y][0] === CellType.BLANK) {
+								columns.add(x);
+							}
 						}
 						if (fade) {
 							animFade[x][y] = true;
@@ -957,8 +984,9 @@ function revealCells(x, y) {
 					for (let i of columns.values()) {
 						let colorsFound = false;
 						for (let j = 0; j < gridHeight; j++) {
-							const checkDepth = animFade[i][j] ? 1 : 0;
-							if (grid[i][j][checkDepth] >= CellType.COLOR) {
+							const content = grid[i][j];
+							const checkDepth = animFade[i][j] + (content[0] === CellType.BLANK);
+							if (content[checkDepth] >= CellType.COLOR) {
 								colorsFound = true;
 								break;
 							}
