@@ -274,11 +274,11 @@ function chooseShapeSize() {
 	}
 	const p = random.next();
 	const modeMinusMin = modalShapeSize - minShapeSize;
-	if (p < modeMinusMin / shapeSizeRange) {
-		return minShapeSize + Math.sqrt(modeMinusMin * shapeSizeRange * p);
-	} else {
-		return maxShapeSize - Math.sqrt(shapeSizeRange * (maxShapeSize - modalShapeSize) * (1 - p));
+	let x = minShapeSize + Math.sqrt(modeMinusMin * shapeSizeRange * p);
+	if (x > modalShapeSize) {
+		x =  maxShapeSize - Math.sqrt(shapeSizeRange * (maxShapeSize - modalShapeSize) * (1 - p));
 	}
+	return Math.round(x);
 }
 
 /** Returns whether or not a shape can be expanded into a particular cell and if not then
