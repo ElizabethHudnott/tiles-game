@@ -55,7 +55,7 @@
 					Depth
 				</label>
 				<div>
-					<input type="number" min="1" required value="2" id="grid-depth">
+					<input type="number" min="2" max="5" required value="2" id="grid-depth">
 				</div>
 			</div>
 			<div class="row">
@@ -63,15 +63,7 @@
 					Colours
 				</label>
 				<div>
-					<input type="number" min="2" max="7" required value="4" id="num-colors">
-				</div>
-			</div>
-			<div class="row">
-				<label for="run-length">
-					Minimum Run Length
-				</label>
-				<div>
-					<input type="number" min="2" required value="2" id="run-length">
+					<input type="number" min="4" max="7" required value="4" id="num-colors">
 				</div>
 			</div>
 			<div class="row">
@@ -92,19 +84,11 @@
 				</div>
 			</div>
 			<div class="row">
-				<label for="shape-size-min">
+				<label for="run-length">
 					Minimum Group Size
 				</label>
 				<div>
-					<input type="number" min="2" required value="2" id="shape-size-min">
-				</div>
-			</div>
-			<div class="row">
-				<label for="shape-size-max">
-					Maximum Group Size
-				</label>
-				<div>
-					<input type="number" min="2" required value="8" id="shape-size-max">
+					<input type="number" min="2" required value="2" id="run-length">
 				</div>
 			</div>
 			<div class="row">
@@ -113,6 +97,14 @@
 				</label>
 				<div>
 					<input type="number" min="2" required value="3" id="shape-size-mode">
+				</div>
+			</div>
+			<div class="row">
+				<label for="shape-size-max">
+					Maximum Group Size
+				</label>
+				<div>
+					<input type="number" min="2" required value="8" id="shape-size-max">
 				</div>
 			</div>
 			<div class="row">

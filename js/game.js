@@ -33,13 +33,24 @@ const FADE_TIME = 150;
 const MIN_PARTICLE_SIZE = 10;
 const PARTICLE_SPEED = 18 / TIME_PER_FRAME;
 
+function initialValue(id, parser) {
+	const input = document.getElementById(id);
+	let value = parser(input.value);
+	if (!value && value !== 0) {
+		input.value = input.defaultValue;
+		value = parser(input.defaultValue);
+	}
+	return value;
+}
+
 let parentElement = document.body;
 let gravity;
 let gridWidth, gridHeight, gridDepth, numColors;
 let grid, startColumn;
-let minShapeSize, maxShapeSize, modalShapeSize, shapeSizeRange;
-let minRunLength = parseInt(document.getElementById('run-length').value) || 2;
-let blankProportion, colorOverBlank, dropProbability;
+let minRunLength = initialValue('run-length', parseInt);
+let modalShapeSize = initialValue('shape-size-mode', parseInt);
+let maxShapeSize = initialValue('shape-size-max', parseInt);
+let shapeSizeRange, blankProportion, colorOverBlank, dropProbability;
 let cellSize, boxSize, cornerSize, pxOffset;
 let cellCapacity, totalCapacity, blanksPlaced, colorsPlaced;
 let random;
@@ -270,11 +281,11 @@ function chooseCell() {
 
 function chooseShapeSize() {
 	if (shapeSizeRange === 0) {
-		return minShapeSize;
+		return minRunLength;
 	}
 	const p = random.next();
-	const modeMinusMin = modalShapeSize - minShapeSize;
-	let x = minShapeSize + Math.sqrt(modeMinusMin * shapeSizeRange * p);
+	const modeMinusMin = modalShapeSize - minRunLength;
+	let x = minRunLength + Math.sqrt(modeMinusMin * shapeSizeRange * p);
 	if (x > modalShapeSize) {
 		x =  maxShapeSize - Math.sqrt(shapeSizeRange * (maxShapeSize - modalShapeSize) * (1 - p));
 	}
@@ -669,25 +680,7 @@ function newGame() {
 	gridDepth = parseInt(document.getElementById('grid-depth').value);
 	numColors = parseInt(document.getElementById('num-colors').value);
 
-	const minShapeSizeInput = document.getElementById('shape-size-min');
-	const maxShapeSizeInput = document.getElementById('shape-size-max');
-	const modalShapeSizeInput = document.getElementById('shape-size-mode');
-	minRunLength = parseInt(document.getElementById('run-length').value);
-	minShapeSize = parseInt(minShapeSizeInput.value);
-	maxShapeSize = parseInt(maxShapeSizeInput.value);
-	modalShapeSize = parseInt(modalShapeSizeInput.value);
-	if (maxShapeSize < minShapeSize) {
-		[minShapeSize, maxShapeSize] = [maxShapeSize, minShapeSize];
-		minShapeSizeInput.value = minShapeSize;
-		maxShapeSizeInput.value = maxShapeSize;
-	}
-	if (modalShapeSize < minShapeSize) {
-		modalShapeSize = minShapeSize;
-	} else if (modalShapeSize > maxShapeSize) {
-		modalShapeSize = maxShapeSize;
-	}
-	modalShapeSizeInput.value = modalShapeSize;
-	shapeSizeRange = maxShapeSize - minShapeSize;
+	shapeSizeRange = maxShapeSize - minRunLength;
 
 	dropProbability = parseFloat(document.getElementById('drop-probability').value) / 100;
 	blankProportion = parseFloat(document.getElementById('blank-percentage').value) / 100;
@@ -695,7 +688,7 @@ function newGame() {
 
 	const seedInput = document.getElementById('random-seed');
 	const seedStr = seedInput.value;
-	if (!newSeed && /^\d{1,10}\n\d{1,10}\n\d{1,10}\n\d{1,10}$/.test(seedStr)) {
+	if (!newSeed && /^ *\d{1,10} *\n *\d{1,10} *\n *\d{1,10} *\n *\d{1,10}\s*$/.test(seedStr)) {
 		random = new RandomNumberGenerator(seedStr);
 	} else {
 		random = new RandomNumberGenerator();
@@ -1031,23 +1024,36 @@ document.getElementById('btn-pause').addEventListener('click', function (event) 
 });
 
 document.getElementById('run-length').addEventListener('input', function (event) {
+	this.setCustomValidity('');
 	const value = parseInt(this.value);
-	if (value > 1) {
+	if (Number.isFinite(value)) {
 		minRunLength = value;
-		const minShapeSizeInput = document.getElementById('shape-size-min');
-		if (minRunLength > parseInt(minShapeSizeInput.value)) {
-			minShapeSizeInput.value = minRunLength;
+		if (modalShapeSize >= minRunLength && modalShapeSize <= maxShapeSize) {
+			document.getElementById('shape-size-mode').setCustomValidity('');
 		}
 	}
 });
 
-document.getElementById('shape-size-min').addEventListener('input', function (event) {
+document.getElementById('shape-size-mode').addEventListener('input', function (event) {
+	this.setCustomValidity('');
 	const value = parseInt(this.value);
-	if (value > 1 && value < minRunLength) {
-		minRunLength = value;
-		document.getElementById('run-length').value = value;
+	if (Number.isFinite(value)) {
+		modalShapeSize = value;
 	}
-})
+});
+
+document.getElementById('shape-size-max').addEventListener('input', function (event) {
+	const value = parseInt(this.value);
+	if (Number.isFinite(value)) {
+		maxShapeSize = value;
+		if (minRunLength <= maxShapeSize) {
+			document.getElementById('run-length').setCustomValidity('');
+		}
+		if (modalShapeSize >= minRunLength && modalShapeSize <= maxShapeSize) {
+			document.getElementById('shape-size-mode').setCustomValidity('');
+		}
+	}
+});
 
 document.getElementById('btn-random-game').addEventListener('click', function (event) {
 	newSeed = true;
@@ -1059,7 +1065,23 @@ document.getElementById('btn-seed-game').addEventListener('click', function (eve
 
 document.getElementById('game-parameters').addEventListener('submit', function (event) {
 	event.preventDefault();
-	newGame();
+	const minShapeSizeInput = document.getElementById('run-length');
+	const modalShapeSizeInput = document.getElementById('shape-size-mode');
+	if (minRunLength > maxShapeSize) {
+		minShapeSizeInput.setCustomValidity('Minimum cannot be greater than the maximum.')
+	} else {
+		minShapeSizeInput.setCustomValidity('');
+	}
+	if (modalShapeSize < minRunLength) {
+		modalShapeSizeInput.setCustomValidity('Mode cannot be less than the minimum.')
+	} else if (modalShapeSize > maxShapeSize) {
+		modalShapeSizeInput.setCustomValidity('Mode cannot be greater than maximum.')
+	} else {
+		modalShapeSizeInput.setCustomValidity('');
+	}
+	if (this.reportValidity()) {
+		newGame();
+	}
 });
 
 document.getElementById('btn-empty').addEventListener('click', function (event) {
