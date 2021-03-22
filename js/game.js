@@ -47,10 +47,10 @@ let parentElement = document.body;
 let gravity;
 let gridWidth, gridHeight, gridDepth, numColors;
 let grid, startColumn;
-let minRunLength = initialValue('run-length', parseInt);
+let minShapeSize = initialValue('shape-size-min', parseInt);
 let modalShapeSize = initialValue('shape-size-mode', parseInt);
 let maxShapeSize = initialValue('shape-size-max', parseInt);
-let shapeSizeRange, blankProportion, colorOverBlank, dropProbability;
+let shapeSizeRange, minRunLength, blankProportion, colorOverBlank, dropProbability;
 let cellSize, boxSize, cornerSize, pxOffset;
 let cellCapacity, totalCapacity, blanksPlaced, colorsPlaced;
 let random;
@@ -281,11 +281,11 @@ function chooseCell() {
 
 function chooseShapeSize() {
 	if (shapeSizeRange === 0) {
-		return minRunLength;
+		return minShapeSize;
 	}
 	const p = random.next();
-	const modeMinusMin = modalShapeSize - minRunLength;
-	let x = minRunLength + Math.sqrt(modeMinusMin * shapeSizeRange * p);
+	const modeMinusMin = modalShapeSize - minShapeSize;
+	let x = minShapeSize + Math.sqrt(modeMinusMin * shapeSizeRange * p);
 	if (x > modalShapeSize) {
 		x =  maxShapeSize - Math.sqrt(shapeSizeRange * (maxShapeSize - modalShapeSize) * (1 - p));
 	}
@@ -503,7 +503,7 @@ function makeShape() {
 
 	} while (shapeSet.size < targetSize);
 
-	if (shapeSet.size < minRunLength) {
+	if (shapeSet.size < minShapeSize) {
 		return false;
 	}
 
@@ -680,7 +680,7 @@ function newGame() {
 	gridDepth = parseInt(document.getElementById('grid-depth').value);
 	numColors = parseInt(document.getElementById('num-colors').value);
 
-	shapeSizeRange = maxShapeSize - minRunLength;
+	shapeSizeRange = maxShapeSize - minShapeSize;
 
 	dropProbability = parseFloat(document.getElementById('drop-probability').value) / 100;
 	blankProportion = parseFloat(document.getElementById('blank-percentage').value) / 100;
@@ -1023,12 +1023,18 @@ document.getElementById('btn-pause').addEventListener('click', function (event) 
 	drawCanvas();
 });
 
-document.getElementById('run-length').addEventListener('input', function (event) {
+document.getElementById('btn-reduce-run-length').addEventListener('click', function (event) {
+	minRunLength--;
+	document.getElementById('run-length').innerHTML = minRunLength;
+	this.disabled = minRunLength === 2;
+});
+
+document.getElementById('shape-size-min').addEventListener('input', function (event) {
 	this.setCustomValidity('');
 	const value = parseInt(this.value);
 	if (Number.isFinite(value)) {
-		minRunLength = value;
-		if (modalShapeSize >= minRunLength && modalShapeSize <= maxShapeSize) {
+		minShapeSize = value;
+		if (modalShapeSize >= minShapeSize && modalShapeSize <= maxShapeSize) {
 			document.getElementById('shape-size-mode').setCustomValidity('');
 		}
 	}
@@ -1046,10 +1052,10 @@ document.getElementById('shape-size-max').addEventListener('input', function (ev
 	const value = parseInt(this.value);
 	if (Number.isFinite(value)) {
 		maxShapeSize = value;
-		if (minRunLength <= maxShapeSize) {
-			document.getElementById('run-length').setCustomValidity('');
+		if (minShapeSize <= maxShapeSize) {
+			document.getElementById('min-shape-size').setCustomValidity('');
 		}
-		if (modalShapeSize >= minRunLength && modalShapeSize <= maxShapeSize) {
+		if (modalShapeSize >= minShapeSize && modalShapeSize <= maxShapeSize) {
 			document.getElementById('shape-size-mode').setCustomValidity('');
 		}
 	}
@@ -1065,14 +1071,14 @@ document.getElementById('btn-seed-game').addEventListener('click', function (eve
 
 document.getElementById('game-parameters').addEventListener('submit', function (event) {
 	event.preventDefault();
-	const minShapeSizeInput = document.getElementById('run-length');
+	const minShapeSizeInput = document.getElementById('shape-size-min');
 	const modalShapeSizeInput = document.getElementById('shape-size-mode');
-	if (minRunLength > maxShapeSize) {
+	if (minShapeSize > maxShapeSize) {
 		minShapeSizeInput.setCustomValidity('Minimum cannot be greater than the maximum.')
 	} else {
 		minShapeSizeInput.setCustomValidity('');
 	}
-	if (modalShapeSize < minRunLength) {
+	if (modalShapeSize < minShapeSize) {
 		modalShapeSizeInput.setCustomValidity('Mode cannot be less than the minimum.')
 	} else if (modalShapeSize > maxShapeSize) {
 		modalShapeSizeInput.setCustomValidity('Mode cannot be greater than maximum.')
@@ -1080,6 +1086,9 @@ document.getElementById('game-parameters').addEventListener('submit', function (
 		modalShapeSizeInput.setCustomValidity('');
 	}
 	if (this.reportValidity()) {
+		minRunLength = minShapeSize;
+		document.getElementById('run-length').innerHTML = minRunLength;
+		document.getElementById('btn-reduce-run-length').disabled = minRunLength === 2;
 		newGame();
 	}
 });

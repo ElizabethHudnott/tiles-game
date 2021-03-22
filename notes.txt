@@ -14,3 +14,18 @@ Need to retry expanding shapes if the reason for failing was column not yet tall
 
 const couldFold = random.next() <= foldProbability;
 foldProbability = parseFloat(document.getElementById('fold-probability').value) / 100;
+
+Property	min	max		bits	digits (base 36)
+width		2	37				1
+height		2	37				1
+depth		2	5		2
+colours		4	7		2
+min run		2	5		2
+blank%		0	99				1
+colour+blank			1
+min group	2	9		3
+max group	min	min+15	4
+mode group	min	min+7	3
+min bombs	0
+drop%		0	99				1
+seed				128			6*4+1 = 25 (1 bit leftover per number)

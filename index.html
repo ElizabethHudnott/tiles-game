@@ -85,10 +85,23 @@
 			</div>
 			<div class="row">
 				<label for="run-length">
+					Minimum Run Length
+				</label>
+				<div class="d-flex">
+					<output id="run-length" for="shape-min-size btn-reduce-run-length">
+						2
+					</output>
+					<button type="button" id="btn-reduce-run-length" disabled>
+						Reduce
+					</button>
+				</div>
+			</div>
+			<div class="row">
+				<label for="shape-size-min">
 					Minimum Group Size
 				</label>
 				<div>
-					<input type="number" min="2" required value="2" id="run-length">
+					<input type="number" min="2" max="9" required value="2" id="shape-size-min">
 				</div>
 			</div>
 			<div class="row">
@@ -96,7 +109,7 @@
 					Modal Group Size
 				</label>
 				<div>
-					<input type="number" min="2" required value="3" id="shape-size-mode">
+					<input type="number" min="2" max="16" required value="3" id="shape-size-mode">
 				</div>
 			</div>
 			<div class="row">
@@ -104,7 +117,7 @@
 					Maximum Group Size
 				</label>
 				<div>
-					<input type="number" min="2" required value="8" id="shape-size-max">
+					<input type="number" min="2" max="24" required value="11" id="shape-size-max">
 				</div>
 			</div>
 			<div class="row">
