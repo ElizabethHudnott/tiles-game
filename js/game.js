@@ -686,6 +686,10 @@ function newGame() {
 	blankProportion = parseFloat(document.getElementById('blank-percentage').value) / 100;
 	colorOverBlank = document.getElementById('color-over-blank').checked;
 
+	minRunLength = minShapeSize;
+	document.getElementById('run-length').innerHTML = minRunLength;
+	document.getElementById('btn-reduce-run-length').disabled = minRunLength === 2;
+
 	const seedInput = document.getElementById('random-seed');
 	const seedStr = seedInput.value;
 	if (!newSeed && /^ *\d{1,10} *\n *\d{1,10} *\n *\d{1,10} *\n *\d{1,10}\s*$/.test(seedStr)) {
@@ -777,6 +781,11 @@ function findTopShapes() {
 	if (topShapes.length === 0) {
 		timer.stop();
 		setBombNeeded(false);
+		document.getElementById('bombs-used-complete').innerHTML = bombsUsed;
+		document.getElementById('time-taken').innerHTML = document.getElementById('timer').innerHTML;
+		const objectiveText = bombsUsed === 0 ? '' : 'using fewer bombs or';
+		document.getElementById('objective').innerHTML = objectiveText;
+		Components.openModal('completed-modal');
 	} else {
 		setBombNeeded(bombNeeded);
 	}
@@ -1086,9 +1095,6 @@ document.getElementById('game-parameters').addEventListener('submit', function (
 		modalShapeSizeInput.setCustomValidity('');
 	}
 	if (this.reportValidity()) {
-		minRunLength = minShapeSize;
-		document.getElementById('run-length').innerHTML = minRunLength;
-		document.getElementById('btn-reduce-run-length').disabled = minRunLength === 2;
 		newGame();
 	}
 });
@@ -1107,6 +1113,11 @@ document.getElementById('btn-build').addEventListener('click', function (event) 
 	addShape();
 	drawCanvas();
 	findTopShapes();
+});
+
+document.getElementById('btn-next-level').addEventListener('click', function (event) {
+	Components.closeModal();
+	newGame();
 });
 
 context.canvas.addEventListener('click', function (event) {
