@@ -518,7 +518,6 @@ function makeShape() {
 		}
 	}
 	totalCapacity -= shapeSet.size;
-console.log(cellCapacity[2]);
 	return true;
 }
 
