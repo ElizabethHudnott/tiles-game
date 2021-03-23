@@ -12,6 +12,15 @@ const CellType = Object.freeze({
 	COLOR: 2,
 });
 
+// Status codes when trying to add a cell onto an existing shape
+const Conflict = Object.freeze({
+	NONE: 0,			// Okay
+	FULL: 1,			// Cell cannot hold any more tiles
+	ALREADY_ADDED: 2,	// Shape already occupies the queried cell
+	FLOATING: 3,		// Would leave a tile floating mid air
+	MERGE: 4,			// Would cause the shape to another shape with the same colour
+});
+
 const COLORS = [
 	[  0,   0, 40],		// Gray
 	[ 15, 100, 60],		// Red
@@ -300,46 +309,88 @@ function chooseShapeSize() {
 	return Math.round(x);
 }
 
-/** Returns whether or not a shape can be expanded into a particular cell and if not then
- *	which cell would cause a merger with another shape.
+/** Returns whether or not a shape can be expanded into a particular cell, if not then
+ *	which cells would cause a merger with another shape, and which cells need to be added.
  */
-function canExpand(x, y, shapeSet, color) {
+function canExpand(x, y, shapeSet, color, merges = new Set(), additions = new Set()) {
 	if (cellCapacity[x][y] === 0) {
-		return [false, undefined];
+		return [Conflict.FULL, merges, additions];
 	}
 	if (shapeSet.has(`${x},${y}`)) {
-		return [false, undefined];
+		return [Conflict.ALREADY_ADDED, merges, additions];
 	}
-	if (y > 0 && cellCapacity[x][y - 1] === gridDepth && !shapeSet.has(`${x},${y - 1}`)) {
-		// Can't be floating mid air.
-		return [false, undefined];
-	}
+	additions.add(`${x},${y}`);
 	let depth;
 	if (x > 0) {
 		depth = getBuiltDepth(x - 1, y);
 		if (grid[x - 1][y][depth - 1] === color) {
-			return [false, [x - 1, y]];
+			merges.add(`${x - 1},${y}`);
 		}
 	}
 	if (x < gridWidth - 1) {
 		depth = getBuiltDepth(x + 1, y);
 		if (grid[x + 1][y][depth - 1] === color) {
-			return [false, [x + 1, y]];
+			merges.add(`${x + 1},${y}`);
 		}
 	}
 	if (y > 0) {
 		depth = getBuiltDepth(x, y - 1);
 		if (grid[x][y - 1][depth - 1] === color) {
-			return [false, [x, y - 1]];
+			merges.add(`${x},${y - 1}`);
 		}
 	}
 	if (y < gridHeight - 1) {
 		depth = getBuiltDepth(x, y + 1);
 		if (grid[x][y + 1][depth - 1] === color) {
-			return [false, [x, y + 1]];
+			merges.add(`${x},${y + 1}`);
 		}
 	}
-	return [true, undefined];
+
+	if (y > 0 && grid[x][y - 1][0] === CellType.EMPTY) {
+		// Can't be floating mid air.
+		const newShape = new Set(shapeSet);
+		newShape.add(`${x},${y}`);
+		canExpand(x, y - 1, newShape, color, merges, additions);
+	}
+
+	const status = merges.size === 0 ? Conflict.NONE : Conflict.MERGE;
+	return [status, merges, additions];
+
+}
+
+function addExpansion(set, additions) {
+	let str = 'E,';
+	for (let addition of additions) {
+		str += addition + ',';
+	}
+	set.add(str.slice(0, -1));
+}
+
+function addOptions(x, y, shapeSet, color, targetSize, options) {
+	if (x > 0) {
+		const [status, , additions] = canExpand(x - 1, y, shapeSet, color);
+		if (status === Conflict.NONE && shapeSet.size + additions.size <= targetSize) {
+			addExpansion(options, additions);
+		}
+	}
+	if (x < gridWidth - 1) {
+		const [status, , additions] = canExpand(x + 1, y, shapeSet, color);
+		if (status === Conflict.NONE && shapeSet.size + additions.size <= targetSize) {
+			addExpansion(options, additions);
+		}
+	}
+	if (y > 0) {
+		const [status, , additions] = canExpand(x, y - 1, shapeSet, color);
+		if (status === Conflict.NONE && shapeSet.size + additions.size <= targetSize) {
+			addExpansion(options, additions);
+		}
+	}
+	if (y < gridHeight - 1) {
+		const [status, , additions] = canExpand(x, y + 1, shapeSet, color);
+		if (status === Conflict.NONE && shapeSet.size + additions.size <= targetSize) {
+			addExpansion(options, additions);
+		}
+	}
 }
 
 function shiftUp(x, y) {
@@ -451,49 +502,30 @@ function makeShape() {
 		return false;
 	}
 
-	const expandable = new Set();
+	const targetSize = chooseShapeSize();
+	const options = new Set();
+	addOptions(x, y, shapeSet, color, targetSize, options);
 	const highest = new Map();
 	highest.set(x, y);
-	const targetSize = chooseShapeSize();
 
-	do {
-		if (x > 0) {
-			const attempt = canExpand(x - 1, y, shapeSet, color);
-			if (attempt[0]) {
-				expandable.add(`E,${x - 1},${y}`);
-			}
-		}
-		if (x < gridWidth - 1) {
-			const attempt = canExpand(x + 1, y, shapeSet, color);
-			if (attempt[0]) {
-				expandable.add(`E,${x + 1},${y}`);
-			}
-		}
-		if (y > 0) {
-			const attempt = canExpand(x, y - 1, shapeSet, color);
-			if (attempt[0]) {
-				expandable.add(`E,${x},${y - 1}`);
-			}
-		}
-		if (y < gridHeight - 1) {
-			const attempt = canExpand(x, y + 1, shapeSet, color);
-			if (attempt[0]) {
-				expandable.add(`E,${x},${y + 1}`);
-			}
-		}
-		if (expandable.size > 0) {
-			const index = Math.trunc(random.next() * expandable.size);
+	while (shapeSet.size < targetSize && options.size > 0) {
+		if (options.size > 0) {
+			const index = Math.trunc(random.next() * options.size);
 			let i = 0;
-			for (let value of expandable.values()) {
+			for (let value of options.values()) {
 				if (index === i) {
-					const params = value.split(',', 3);
-					x = parseInt(params[1]);
-					y = parseInt(params[2]);
-					expandable.delete(value);
-					shapeSet.add(`${x},${y}`);
-					const highestInColumn = highest.get(x);
-					if (highestInColumn === undefined || y > highestInColumn) {
-						highest.set(x, y);
+					const params = value.split(',');
+					console.log(params);
+					for (let j = 1; j < params.length - 1; j += 2) {
+						x = parseInt(params[j]);
+						y = parseInt(params[j + 1]);
+						options.delete(value);
+						shapeSet.add(`${x},${y}`);
+						addOptions(x, y, shapeSet, color, targetSize, options);
+						const highestInColumn = highest.get(x);
+						if (highestInColumn === undefined || y > highestInColumn) {
+							highest.set(x, y);
+						}
 					}
 					break;
 				}
@@ -503,7 +535,7 @@ function makeShape() {
 			break;
 		}
 
-	} while (shapeSet.size < targetSize);
+	};
 
 	if (shapeSet.size < minShapeSize) {
 		return false;
@@ -676,6 +708,7 @@ function newGame() {
 	setBombNeeded(false);
 	bombsUsed = 0;
 	showBombsUsed();
+	document.getElementById('btn-build').disabled = true;
 
 	gridWidth = parseInt(document.getElementById('grid-width').value);
 	gridHeight = parseInt(document.getElementById('grid-height').value);
@@ -1106,6 +1139,7 @@ document.getElementById('btn-empty').addEventListener('click', function (event) 
 	timer.reset();
 	emptyGrid();
 	drawCanvas();
+	document.getElementById('btn-build').disabled = false;
 	random.reset();
 	startColumn = Math.trunc(random.next() * gridWidth);
 });
@@ -1113,9 +1147,13 @@ document.getElementById('btn-empty').addEventListener('click', function (event) 
 document.getElementById('btn-build').addEventListener('click', function (event) {
 	noFade();
 	noBlocksMoving();
-	addShape();
+	const success = addShape();
 	drawCanvas();
 	findTopShapes();
+	if (!success) {
+		this.disabled = true;
+		timer.start();
+	}
 });
 
 document.getElementById('btn-next-level').addEventListener('click', function (event) {
