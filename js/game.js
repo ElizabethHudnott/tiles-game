@@ -167,6 +167,10 @@ function encodeDifficulty() {
 	return str.toUpperCase();
 }
 
+function encodeLevel() {
+	return encodeDifficulty() + '-' + random.seed;
+}
+
 function noFade() {
 	for (let i = 0; i < gridWidth; i++) {
 		for (let j = 0; j < gridHeight; j++) {
@@ -515,7 +519,6 @@ function makeShape() {
 			for (let value of options.values()) {
 				if (index === i) {
 					const params = value.split(',');
-					console.log(params);
 					for (let j = 1; j < params.length - 1; j += 2) {
 						x = parseInt(params[j]);
 						y = parseInt(params[j + 1]);
@@ -726,8 +729,8 @@ function newGame() {
 	document.getElementById('btn-reduce-run-length').disabled = minRunLength === 2;
 
 	const seedInput = document.getElementById('random-seed');
-	const seedStr = seedInput.value;
-	if (!newSeed && /^ *\d{1,10} *\n *\d{1,10} *\n *\d{1,10} *\n *\d{1,10}\s*$/.test(seedStr)) {
+	const seedStr = seedInput.value.toUpperCase();
+	if (!newSeed && /^[0-9A-Z]{24}[0-9A-F]$/.test(seedStr)) {
 		random = new RandomNumberGenerator(seedStr);
 	} else {
 		random = new RandomNumberGenerator();
@@ -745,7 +748,7 @@ function newGame() {
 	timer.start();
 	drawCanvas();
 	findTopShapes();
-	console.log(encodeDifficulty());
+	console.log(encodeLevel());
 }
 
 newGame();

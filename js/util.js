@@ -2,17 +2,30 @@ class RandomNumberGenerator {
 
 	constructor(seed) {
 		if (seed === undefined) {
-			this.a = Math.floor(Math.random() * 4294967295);
-			this.b = Math.floor(Math.random() * 4294967295);
-			this.c = Math.floor(Math.random() * 4294967295);
-			this.d = Math.floor(Math.random() * 4294967295);
-			seed = this.a + '\n' + this.b + '\n' + this.c + '\n' + this.d;
+			this.a = Math.floor(Math.random() * 4294967296);
+			this.b = Math.floor(Math.random() * 4294967296);
+			this.c = Math.floor(Math.random() * 4294967296);
+			this.d = Math.floor(Math.random() * 4294967296);
+			seed = (
+				Math.trunc(this.a / 2).toString(36).padStart(6, '0') +
+				Math.trunc(this.b / 2).toString(36).padStart(6, '0') +
+				Math.trunc(this.c / 2).toString(36).padStart(6, '0') +
+				Math.trunc(this.d / 2).toString(36).padStart(6, '0') +
+				(this.a % 2 + (this.b % 2) * 2 + (this.c % 2) * 4 + (this.d % 2) * 8).toString(16)
+			).toUpperCase();
 		} else {
-			const strings = seed.split('\n', 4);
-			this.a = parseInt(strings[0]);
-			this.b = parseInt(strings[1]);
-			this.c = parseInt(strings[2]);
-			this.d = parseInt(strings[3]);
+			this.a = parseInt(seed.slice(0, 6), 36) * 2;
+			this.b = parseInt(seed.slice(6, 12), 36) * 2;
+			this.c = parseInt(seed.slice(12, 18), 36) * 2;
+			this.d = parseInt(seed.slice(18, 24), 36) * 2;
+			let lsbs = parseInt(seed[24], 16);
+			this.a += lsbs & 1;
+			lsbs >>= 1;
+			this.b += lsbs & 1;
+			lsbs >>= 1;
+			this.c += lsbs & 1;
+			lsbs >>= 1;
+			this.d += lsbs;
 		}
 		this.originalA = this.a;
 		this.originalB = this.b;
