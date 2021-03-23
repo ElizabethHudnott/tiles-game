@@ -2,24 +2,30 @@ const timerElement = document.getElementById('timer');
 let startTime, timer, accumulatedTime;
 let paused = false, running = false;
 
-function updateTime() {
-	const now = performance.now();
-	const totalSeconds = Math.round((accumulatedTime + now - startTime) / 1000);
-	let total = totalSeconds;
-	const seconds = total % 60;
+function displayTime(elapsed) {
+	const seconds = elapsed % 60;
 	const secsStr = seconds.toString().padStart(2, '0');
-	total -= seconds;
-	const minutes = (total / 60) % 60;
-	total -= minutes * 60;
-	const hours = total / 3600;
+	elapsed -= seconds;
+	const minutes = (elapsed / 60) % 60;
+	elapsed -= minutes * 60;
+	const hours = elapsed / 3600;
 	if (hours > 0) {
 		const minsStr = minutes.toString().padStart(2, '0');
 		timerElement.innerHTML = `${hours}:${minsStr}:${secsStr}`;
 	} else {
 		timerElement.innerHTML = `${minutes}:${secsStr}`;
 	}
-	const targetNext = startTime + (totalSeconds + 1) * 1000 - accumulatedTime;
-	setTimeout(updateTime, targetNext - now);
+}
+
+function secondsElapsed() {
+	return Math.round((accumulatedTime + performance.now() - startTime) / 1000);
+}
+
+function tick() {
+	const seconds = secondsElapsed();
+	displayTime(seconds);
+	const targetNext = startTime + (seconds + 1) * 1000 - accumulatedTime;
+	timer = setTimeout(tick, targetNext - performance.now());
 }
 
 function reset() {
@@ -33,8 +39,10 @@ function reset() {
 
 function start() {
 	if (timer === undefined) {
-		startTime = performance.now();
-		timer = setTimeout(updateTime, 1000);
+		const millis = accumulatedTime % 1000;
+		accumulatedTime -= millis;
+		startTime = performance.now() - millis;
+		timer = setTimeout(tick, 1000 - millis);
 		running = true;
 		paused = false;
 	}
@@ -42,7 +50,7 @@ function start() {
 
 function stopCounting() {
 	if (running) {
-		updateTime();
+		// displayTime(secondsElapsed());
 		accumulatedTime += performance.now() - startTime;
 		clearTimeout(timer);
 		timer = undefined;

@@ -150,6 +150,14 @@ globalThis.debugGrid = function () {
 	console.log(str);
 }
 
+function encodeDifficulty() {
+	let str = (gridWidth - 2).toString(36);
+	str += (gridHeight - 2).toString(36);
+	let number = (gridDepth - 2) + ((numColors - 4) << 2) + ((Math.min(minRunLength, 5) - 2) << 4);
+	str += number.toString(36);
+	return str.toUpperCase();
+}
+
 function noFade() {
 	for (let i = 0; i < gridWidth; i++) {
 		for (let j = 0; j < gridHeight; j++) {
@@ -362,6 +370,9 @@ function shiftUp(x, y) {
 }
 
 function canPlaceBlank(x, y) {
+	if (y === 0 && x % 2 === 0) {
+		return false;
+	}
 	if (y === gridHeight - 1 || grid[x][y][0] === CellType.BLANK) {
 		return false;
 	}
@@ -370,16 +381,7 @@ function canPlaceBlank(x, y) {
 	if (!sufficentCapacity) {
 		return false;
 	}
-	if (y === 0) {
-		for (let i = 0; i < gridWidth; i++) {
-			if (grid[i][0][0] !== CellType.BLANK && i !== x) {
-				return true;
-			}
-		}
-		return false;
-	} else {
-		return true;
-	}
+	return true;
 }
 
 function makeShape() {
@@ -710,6 +712,7 @@ function newGame() {
 	timer.start();
 	drawCanvas();
 	findTopShapes();
+	console.log(encodeDifficulty());
 }
 
 newGame();
