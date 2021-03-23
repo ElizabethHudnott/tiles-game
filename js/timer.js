@@ -3,7 +3,9 @@ let startTime, timer, accumulatedTime;
 let paused = false, running = false;
 
 function updateTime() {
-	let total = Math.round((accumulatedTime + performance.now() - startTime) / 1000);
+	const now = performance.now();
+	const totalSeconds = Math.round((accumulatedTime + now - startTime) / 1000);
+	let total = totalSeconds;
 	const seconds = total % 60;
 	const secsStr = seconds.toString().padStart(2, '0');
 	total -= seconds;
@@ -16,12 +18,14 @@ function updateTime() {
 	} else {
 		timerElement.innerHTML = `${minutes}:${secsStr}`;
 	}
+	const targetNext = startTime + (totalSeconds + 1) * 1000 - accumulatedTime;
+	setTimeout(updateTime, targetNext - now);
 }
 
 function reset() {
 	timerElement.innerHTML = '0:00'
 	accumulatedTime = 0;
-	clearInterval(timer);
+	clearTimeout(timer);
 	timer = undefined;
 	running = false;
 	paused = false;
@@ -30,7 +34,7 @@ function reset() {
 function start() {
 	if (timer === undefined) {
 		startTime = performance.now();
-		timer = setInterval(updateTime, 1000);
+		timer = setTimeout(updateTime, 1000);
 		running = true;
 		paused = false;
 	}
@@ -40,7 +44,7 @@ function stopCounting() {
 	if (running) {
 		updateTime();
 		accumulatedTime += performance.now() - startTime;
-		clearInterval(timer);
+		clearTimeout(timer);
 		timer = undefined;
 	}
 }
