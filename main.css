@@ -128,6 +128,15 @@ button.border-0 {
 }
 
 
+/* Effects */
+.fade:not(.show) {
+	opacity: 0;
+}
+
+.fade {
+	transition: opacity 0.15s linear;
+}
+
 /* Forms */
 .form-check>* {
 	vertical-align: middle;
@@ -150,10 +159,6 @@ button.border-0 {
 	transform: translate(-50%, -50%);
 	max-width: 500px;
 	z-index: 1001;
-}
-
-.modal.show {
-	display: block;
 }
 
 .modal-backdrop {

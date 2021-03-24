@@ -425,7 +425,10 @@ function shiftUp(x, y) {
 }
 
 function canPlaceBlank(x, y) {
-	if (y === 0 && x % 2 === 0) {
+	if (y === 0 && (
+		(x > 0 && grid[x - 1][0][0] === CellType.BLANK) ||
+		(x < gridWidth - 1 && grid[x + 1][0][0] === CellType.BLANK)
+	)) {
 		return false;
 	}
 	if (y === gridHeight - 1 || grid[x][y][0] === CellType.BLANK) {
@@ -757,7 +760,7 @@ function showBombsUsed() {
 	document.getElementById('bombs-used').innerHTML = bombsUsed;
 }
 
-function findTopShapes() {
+function findTopShapes(shapeAdded = false) {
 	let bombNeeded = true;
 	const toVisit = new Set();
 	for (let i = 0; i < gridWidth; i++) {
@@ -817,7 +820,7 @@ function findTopShapes() {
 			bombNeeded = bombNeeded && shape.size < minRunLength;
 		}
 	}
-	if (topShapes.length === 0) {
+	if (topShapes.length === 0 && !shapeAdded) {
 		timer.stop();
 		setBombNeeded(false);
 		document.getElementById('bombs-used-complete').innerHTML = bombsUsed;
@@ -1154,7 +1157,7 @@ document.getElementById('btn-build').addEventListener('click', function (event) 
 	noBlocksMoving();
 	const success = addShape();
 	drawCanvas();
-	findTopShapes();
+	findTopShapes(true);
 	if (!success) {
 		this.disabled = true;
 		timer.start();
@@ -1193,6 +1196,6 @@ function resumeGame() {
 }
 
 for (let modal of document.querySelectorAll('.modal')) {
-	modal.addEventListener('shown.modal', pauseGame);
+	modal.addEventListener('show.modal', pauseGame);
 	modal.addEventListener('hidden.modal', resumeGame);
 }
