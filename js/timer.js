@@ -9,12 +9,16 @@ function displayTime(elapsed) {
 	const minutes = (elapsed / 60) % 60;
 	elapsed -= minutes * 60;
 	const hours = elapsed / 3600;
+	let width;
 	if (hours > 0) {
 		const minsStr = minutes.toString().padStart(2, '0');
 		timerElement.innerHTML = `${hours}:${minsStr}:${secsStr}`;
+		width = 5.6;
 	} else {
 		timerElement.innerHTML = `${minutes}:${secsStr}`;
+		width = minutes > 9 ? 4.3 : 3.3;
 	}
+	timerElement.style.width = width + 'ch';
 }
 
 function secondsElapsed() {

@@ -950,13 +950,14 @@ function revealCells(x, y) {
 					animLengthDown[x][j]++;
 				}
 				let colorsFound = false;
-				for (let j = 0; j < gridHeight; j++) {
+				for (let j = gridHeight - 1; j >= 0; j--) {
 					const content = grid[x][j];
 					const checkDepth = content[0] === CellType.BLANK ? 1 : 0;
 					if (content[checkDepth] >= CellType.COLOR) {
 						colorsFound = true;
 						break;
 					}
+					animFade[x][j] = true;
 				}
 				if (!colorsFound) {
 					// Erase blanks
@@ -1023,13 +1024,14 @@ function revealCells(x, y) {
 					}
 					for (let i of columns.values()) {
 						let colorsFound = false;
-						for (let j = 0; j < gridHeight; j++) {
+						for (let j = gridHeight - 1; j >= 0; j--) {
 							const content = grid[i][j];
 							const checkDepth = animFade[i][j] + (content[0] === CellType.BLANK);
 							if (content[checkDepth] >= CellType.COLOR) {
 								colorsFound = true;
 								break;
 							}
+							animFade[i][j] = true;
 						}
 						if (!colorsFound) {
 							// Erase blanks
