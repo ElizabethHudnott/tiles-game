@@ -10,10 +10,8 @@ mergeStatus of A into B:
 2 constraints satisfied and the total number of cells exceeds the maximum
 3 constraints not satisfied
 
-Need to retry expanding shapes if the reason for failing was column not yet tall enough
-
-const couldFold = random.next() <= foldProbability;
-foldProbability = parseFloat(document.getElementById('fold-probability').value) / 100;
+Need to retry expanding shapes if the reason for failing was column not yet tall enough.
+Add horizontal fold probability
 
 Property	min	max		bits	digits (base 36)
 width		2	37				1
@@ -29,3 +27,64 @@ mode group	min	min+7	3
 min bombs	0
 drop%		0	99				1
 seed				128			6*4+1 = 25 (1 bit leftover per number)
+
+No fall-trigger mechanic:
+
+Blocks 	Shift
+ A 		2
+BB 		-
+ A 		1
+ CC		-
+ A 		0
+
+B < A
+C < A
+
+With fall-trigger mechanic
+
+ aa
+BB
+ A
+ CC
+ A
+
+a < B (so "A" and "a" don't touch)
+C < A (and C automatically triggers A)
+
+Can only split up the blocks up belonging to a particular shape in a particular column once unless another layer has been added to an intervening block. Can always shift up Row 0 so long as the shape doesn't have a block to the left or to the right on Row 0 (as that will auto-trigger folding).
+
+One shift but shifted more than one position is okay:
+Blocks 	Shift
+A 		2
+CC 		-
+BB 		-
+A 		0
+
+
+   | A  |
+B  | B  |
+   | DA | D
+   | C  | C
+   | A  |
+
+(where DA means D is placed on top of A.)
+B < D
+C < A
+D < A
+
+Blocks 	Can Shift Up (column with As)?
+A 			Yes
+A 			Yes
+A 			Yes
+
+A 			No
+A 			Yes
+CC 			Yes
+A 			Yes
+
+A  |		Yes
+DA | D 		Yes
+C  | C 		Yes
+A  |		Yes
+
+Shifting up more than one position at once...
