@@ -57,9 +57,10 @@ let gravity;
 let gridWidth, gridHeight, gridDepth, numColors;
 let grid, startColumn;
 let minShapeSize = initialValue('shape-size-min', parseInt);
-let modalShapeSize = initialValue('shape-size-mode', parseInt);
+let meanShapeSize = initialValue('shape-size-mean', parseInt);
 let maxShapeSize = initialValue('shape-size-max', parseInt);
-let shapeSizeRange, minRunLength, blankProportion, colorOverBlank, dropProbability;
+let shapeSizeRange;
+let minRunLength, blankProportion, colorOverBlank, dropProbability;
 let cellSize, boxSize, cornerSize, pxOffset;
 let cellCapacity, totalCapacity, blanksPlaced, colorsPlaced;
 let random;
@@ -301,16 +302,14 @@ function chooseCell() {
 }
 
 function chooseShapeSize() {
-	if (shapeSizeRange === 0) {
-		return minShapeSize;
+	const p = (meanShapeSize - minShapeSize) / shapeSizeRange;
+	let size = minShapeSize;
+	for (let i = 0; i < shapeSizeRange; i++) {
+		if (random.next() < p) {
+			size++;
+		}
 	}
-	const p = random.next();
-	const modeMinusMin = modalShapeSize - minShapeSize;
-	let x = minShapeSize + Math.sqrt(modeMinusMin * shapeSizeRange * p);
-	if (x > modalShapeSize) {
-		x =  maxShapeSize - Math.sqrt(shapeSizeRange * (maxShapeSize - modalShapeSize) * (1 - p));
-	}
-	return Math.round(x);
+	return size;
 }
 
 /** Returns whether or not a shape can be expanded into a particular cell, if not then
@@ -722,7 +721,6 @@ function newGame() {
 	numColors = parseInt(document.getElementById('num-colors').value);
 
 	shapeSizeRange = maxShapeSize - minShapeSize;
-
 	dropProbability = parseFloat(document.getElementById('drop-probability').value) / 100;
 	blankProportion = parseFloat(document.getElementById('blank-percentage').value) / 100;
 	colorOverBlank = document.getElementById('color-over-blank').checked;
@@ -1087,17 +1085,17 @@ document.getElementById('shape-size-min').addEventListener('input', function (ev
 	const value = parseInt(this.value);
 	if (Number.isFinite(value)) {
 		minShapeSize = value;
-		if (modalShapeSize >= minShapeSize && modalShapeSize <= maxShapeSize) {
-			document.getElementById('shape-size-mode').setCustomValidity('');
+		if (meanShapeSize >= minShapeSize && meanShapeSize <= maxShapeSize) {
+			document.getElementById('shape-size-mean').setCustomValidity('');
 		}
 	}
 });
 
-document.getElementById('shape-size-mode').addEventListener('input', function (event) {
+document.getElementById('shape-size-mean').addEventListener('input', function (event) {
 	this.setCustomValidity('');
 	const value = parseInt(this.value);
 	if (Number.isFinite(value)) {
-		modalShapeSize = value;
+		meanShapeSize = value;
 	}
 });
 
@@ -1108,8 +1106,8 @@ document.getElementById('shape-size-max').addEventListener('input', function (ev
 		if (minShapeSize <= maxShapeSize) {
 			document.getElementById('min-shape-size').setCustomValidity('');
 		}
-		if (modalShapeSize >= minShapeSize && modalShapeSize <= maxShapeSize) {
-			document.getElementById('shape-size-mode').setCustomValidity('');
+		if (meanShapeSize >= minShapeSize && meanShapeSize <= maxShapeSize) {
+			document.getElementById('shape-size-mean').setCustomValidity('');
 		}
 	}
 });
@@ -1125,18 +1123,18 @@ document.getElementById('btn-seed-game').addEventListener('click', function (eve
 document.getElementById('game-parameters').addEventListener('submit', function (event) {
 	event.preventDefault();
 	const minShapeSizeInput = document.getElementById('shape-size-min');
-	const modalShapeSizeInput = document.getElementById('shape-size-mode');
+	const meanShapeSizeInput = document.getElementById('shape-size-mean');
 	if (minShapeSize > maxShapeSize) {
 		minShapeSizeInput.setCustomValidity('Minimum cannot be greater than the maximum.')
 	} else {
 		minShapeSizeInput.setCustomValidity('');
 	}
-	if (modalShapeSize < minShapeSize) {
-		modalShapeSizeInput.setCustomValidity('Mode cannot be less than the minimum.')
-	} else if (modalShapeSize > maxShapeSize) {
-		modalShapeSizeInput.setCustomValidity('Mode cannot be greater than maximum.')
+	if (meanShapeSize < minShapeSize) {
+		meanShapeSizeInput.setCustomValidity('mean cannot be less than the minimum.')
+	} else if (meanShapeSize > maxShapeSize) {
+		meanShapeSizeInput.setCustomValidity('mean cannot be greater than maximum.')
 	} else {
-		modalShapeSizeInput.setCustomValidity('');
+		meanShapeSizeInput.setCustomValidity('');
 	}
 	if (this.reportValidity()) {
 		newGame();
