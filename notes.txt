@@ -51,7 +51,7 @@ BB
 a < B (so "A" and "a" don't touch)
 C < A (and C automatically triggers A)
 
-Can only split up the blocks up belonging to a particular shape in a particular column once unless another layer has been added to an intervening block. Can always shift up Row 0 so long as the shape doesn't have a block to the left or to the right on Row 0 (as that will auto-trigger folding).
+Can only split up the blocks up belonging to a particular shape in a particular column once unless another layer has been added to an intervening block. Can only shift up Row 0 if the shape being moved was the last one added because falling to the bottom also auto-triggers annihilation.
 
 One shift but shifted more than one position is okay:
 Blocks 	Shift
