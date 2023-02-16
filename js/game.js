@@ -18,7 +18,7 @@ const Conflict = Object.freeze({
 	FULL: 1,			// Cell cannot hold any more tiles
 	ALREADY_ADDED: 2,	// Shape already occupies the queried cell
 	FLOATING: 3,		// Would leave a tile floating mid air
-	MERGE: 4,			// Would cause the shape to another shape with the same colour
+	MERGE: 4,			// Would cause the shape to merge with another shape with the same colour
 });
 
 const COLORS = [
@@ -89,8 +89,8 @@ function loadSound(label, url) {
 	});
 }
 
-loadSound('laser', '../sound/laser.mp3');
-loadSound('smash', '../sound/smash.mp3');
+loadSound('laser', 'sound/laser.mp3');
+loadSound('smash', 'sound/smash.mp3');
 
 function panSound(label, pan) {
 	const buffer = sounds.get(label);
